@@ -1,0 +1,33 @@
+{
+    "keyword_trigger_enabled": {
+        "type": "bool",
+        "description": "关键词触发",
+        "hint": "开启后，直接发送“🦀/✨/💤”等关键词即可触发，无需指令前缀（如 /）。",
+        "default": true
+    },
+    "keyword_trigger_mode": {
+        "type": "string",
+        "description": "关键词匹配模式",
+        "hint": "exact：完全相等；starts_with：开头匹配；contains：包含即可。",
+        "options": ["exact", "starts_with", "contains"],
+        "default": "exact"
+    },
+    "whitelist_groups": {
+        "type": "string",
+        "description": "群白名单",
+        "hint": "只允许这些群触发。多个群号请用逗号(,)隔开。留空则不启用白名单。",
+        "default": ""
+    },
+    "blacklist_groups": {
+        "type": "string",
+        "description": "群黑名单",
+        "hint": "禁止这些群触发。多个群号请用逗号(,)隔开。",
+        "default": ""
+    },
+    "global_ban_use_qq": {
+        "type": "bool",
+        "description": "启用 QQ 级彻底封禁",
+        "hint": "开启后，达到原谅上限的用户会被 AstrBot 框架拉黑，彻底无法触发机器人的任何功能。关闭则仅在本项目内锁死好感度。",
+        "default": true
+    }
+}

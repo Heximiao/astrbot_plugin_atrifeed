@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --primary-color: #ff6b81;
+            --bg-color: #fffaf0;
+            --text-color: #333;
+        }
+
+        /* 核心修改：移除 body 的 flex，使用固定容器 */
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: transparent; /* 方便外层控制 */
+            width: 600px; /* 对应 Python 中的 rank_width */
+        }
+
+        #main-container {
+            background-color: var(--bg-color);
+            padding: 30px;
+            box-sizing: border-box;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid var(--primary-color);
+            width: 580px; /* 留出一点边距 */
+            margin: 10px;
+        }
+
+        header {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .help-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            position: relative;
+            z-index: 2; /* 确保文字在立绘上方 */
+        }
+
+        .help-item {
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.8); /* 半透明背景 */
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .command {
+            font-weight: bold;
+            color: #d63031;
+            white-space: nowrap;
+        }
+
+        .description {
+            color: #555;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+
+        .config-info {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+            font-size: 13px;
+            color: #666;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 立绘定位：右下角绝对定位 */
+        .atri-lihui {
+            position: absolute;
+            right: -20px;
+            bottom: -10px;
+            height: 350px; /* 固定高度，防止撑开页面 */
+            width: auto;
+            opacity: 0.8;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+        <img src="{{ lihui_path }}" class="atri-lihui">
+
+        <header>
+            <h1>亚托莉帮助菜单</h1>
+        </header>
+        
+        <ul class="help-list">
+            {% for item in help_items %}
+            <li class="help-item">
+                <span class="command">{{ item.command }}</span>
+                <span class="description">{{ item.description }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="config-info">
+            <div>当前匹配模式：<strong>{{ mode_text }}</strong></div>
+            <div>关键词直发：<strong>{{ '已开启' if keyword_enabled else '已关闭' }}</strong></div>
+            <p style="font-style: italic; margin-top: 5px;">提示：好感度过低亚托莉会不理你哦~</p>
+        </div>
+    </div>
+</body>
+</html>

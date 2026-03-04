@@ -94,7 +94,7 @@ class AtriPlugin(Star):
                 return
         
         conf = self.config if self.config else (self.context.get_config() or {})
-        if not conf.get("keyword_trigger_enabled", False):
+        if not conf.get("keyword_trigger_enabled", True):
             return
 
         message_str = event.message_str

@@ -24,7 +24,8 @@ async def yield_random_folder_pic(event: AstrMessageEvent, curr_dir: str, folder
         "rocket": os.path.join(curr_dir, "pic", "emoji", "rocket"),
         "emoji": os.path.join(curr_dir, "pic", "emoji"),
         "bad": os.path.join(curr_dir, "pic", "emoji", "bad"), 
-        "scare": os.path.join(curr_dir, "pic", "emoji", "scare")
+        "scare": os.path.join(curr_dir, "pic", "emoji", "scare"),
+        "angry": os.path.join(curr_dir, "pic", "emoji", "angry")
     }
     
     for folder_type in folder_types:
@@ -45,6 +46,11 @@ async def run_feed_crab_logic(event: AstrMessageEvent, db, curr_dir: str):
     uid, gid = event.get_sender_id(), event.get_group_id()
     
     if db.check_today_fed(uid, gid, "🦀"):
+        if random.random() < 0.3: # 50% 概率触发
+            yield event.plain_result("呜哇......是美食，高性能......高性能其实还能再吃一顿的......")
+            async for res in yield_random_pic(event, curr_dir):
+                yield res
+            return
         yield event.plain_result("谢谢你，不过亚托莉今天吃饱啦！")
         async for res in yield_random_pic(event, curr_dir):
             yield res
@@ -88,6 +94,11 @@ async def run_feed_fruit_logic(event: AstrMessageEvent, db, curr_dir: str):
     if not feed_type: return
 
     if db.check_today_fed(uid, gid, feed_type):
+        if random.random() < 0.3: # 20% 概率
+            yield event.plain_result("呜哇......是美食，高性能......高性能确实还能再吃一顿的......")
+            async for res in yield_random_pic(event, curr_dir):
+                yield res
+            return
         yield event.plain_result("谢谢你，不过亚托莉今天吃饱啦！")
         async for res in yield_random_pic(event, curr_dir):
             yield res

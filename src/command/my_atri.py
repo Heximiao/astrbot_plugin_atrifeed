@@ -2,6 +2,7 @@ import os
 import random
 import base64
 from datetime import datetime
+import time
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api import logger
 
@@ -40,6 +41,43 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         yield event.plain_result("详情请查看亚托莉帮助吧~")
         return
 
+    last_feed_ts = db.get_last_feed_time(uid, gid)
+    now_ts = int(time.time())
+    
+    # 计算天数差 (秒转天)
+    if last_feed_ts:
+        diff_days = (now_ts - last_feed_ts) / (24 * 3600)
+    else:
+        # 如果没有查到记录，直接按大于30天算
+        diff_days = 31
+
+    is_bored = random.random() < 0.2  # random.random() 返回 0.0 到 1.0 之间的浮点数
+    extra_msg = None
+    if is_bored:
+        mood_text = "有点无聊"
+        mood_code = "Bored"
+        extra_msg = "呐~ 陪亚托莉玩点什么吧？"
+    # 2. 根据天数判断情绪和跟发文字
+    else:
+        if diff_days < 3:
+            mood_text = "非常高兴"
+            mood_code = "Excellent"
+        elif diff_days < 7:
+            mood_text = "开心"
+            mood_code = "Happy"
+        elif diff_days < 14:
+            mood_text = "心情一般"
+            mood_code = "Normal"
+            extra_msg = "多陪陪亚托莉吧~"
+        elif diff_days < 30:
+            mood_text = "有点低落"
+            mood_code = "Low"
+            extra_msg = "好久不见了，多陪陪亚托莉吧~"
+        else:
+            mood_text = "难过"
+            mood_code = "Sad"
+            extra_msg = None # 大于30天不跟发文字
+    
     # 1. 获取数据库数据
     fav, is_blocked = db.get_user_state(uid, gid)
     
@@ -111,7 +149,7 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         "bg_img": get_base64_img("bg1.jpg"),
         "emoji_img": get_base64_img("emoji1.jpg"),
         "total_feeding": stats.get("total_count", 0),
-        "mood": "Excellent" if fav > 20 else "Good",
+        "mood": mood_text,
         "items": {
             "strawberry": stats.get("strawberry_count", 0),
             "watermelon": stats.get("watermelon_count", 0),
@@ -164,3 +202,5 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         yield event.image_result(url)
     except Exception as e:
         logger.error(f"ATRI 渲染失败: {e}")
+    if extra_msg:
+        yield event.plain_result(extra_msg)

@@ -233,6 +233,20 @@ class AtriDB:
             """, (user_id,))
             count = cur.fetchone()[0]
             return count > 0
+        
+    def get_last_feed_time(self, user_id, group_id):
+        """获取用户在对应群组最后一次投喂的时间戳"""
+        group_id = self._format_gid(group_id)
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            # 从 feed_log 中按时间倒序取第一条
+            cur.execute("""
+                SELECT timestamp FROM feed_log 
+                WHERE user_id=? AND group_id=? 
+                ORDER BY timestamp DESC LIMIT 1
+            """, (user_id, group_id))
+            row = cur.fetchone()
+            return row[0] if row else None
 
 # 数据库表说明：
 # user_state：长期核心数据

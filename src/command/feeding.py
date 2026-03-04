@@ -94,7 +94,7 @@ async def run_feed_crab_logic(event: AstrMessageEvent, db, curr_dir: str):
 
     db.record_feeding(uid, gid, "🦀")
     fav_gain = 3 if db.check_continuous_crab(uid, gid) else 2
-    bonus_msg = "\n触发了连续投喂奖励！好感度+3！" if fav_gain == 3 else ""
+    bonus_msg = "\n触发了连续投喂奖励！好感度已经额外+1了！" if fav_gain == 3 else ""
     db.update_favorability(uid, gid, fav_gain)
     
     text = f"是螃蟹！螃蟹很美味，美味就是高兴！好感度+{fav_gain}{bonus_msg}"

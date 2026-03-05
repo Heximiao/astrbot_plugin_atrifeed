@@ -30,5 +30,7 @@ _DEFAULT_KEYWORD_ROUTES: tuple[KeywordRoute, ...] = (
     KeywordRoute(keyword="飞舞萝卜子", action="radish_cmd"),
 
     KeywordRoute(keyword="💉", action="injection_effect"),
+    
+    KeywordRoute(keyword="亚托莉签到", action="atri_signin"),
 
 )

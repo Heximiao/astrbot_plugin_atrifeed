@@ -18,6 +18,7 @@ from .src.command.abuse import run_abuse_logic
 from .src.command.my_atri import run_my_atri_logic
 from .src.command.radish import run_radish_logic
 from .src.command.other_emoji import run_injection_logic
+from .src.command.sign_in import run_sign_in_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -41,7 +42,6 @@ class AtriPlugin(Star):
             
             # 传入数据库
             self.db = AtriDB(db_file)
-            # -------------------------------------------------------
 
             self.apology_count = {}
             self._keyword_router = KeywordRouter(routes=_DEFAULT_KEYWORD_ROUTES)
@@ -56,6 +56,7 @@ class AtriPlugin(Star):
                 "my_atri_card": self.my_atri_card,
                 "radish_cmd": self.radish_cmd,
                 "injection_effect": self.injection_cmd,
+                "atri_signin": self.atri_signin,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 
@@ -204,6 +205,16 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         
         async for result in run_injection_logic(event, self.curr_dir):
+            yield result
+
+    @filter.command("亚托莉签到")
+    async def atri_signin(self, event: AstrMessageEvent):
+        """每日签到，获取螃蟹币和体力"""
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_sign_in_logic(event, self.db):
             yield result
 
     # --- 特殊逻辑 ---

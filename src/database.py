@@ -12,40 +12,27 @@ class AtriDB:
         self.cleanup_old_logs()
 
     def _upgrade_db(self):
-        """用于在不删除数据库的情况下，动态增加新列"""
+        """动态增加新列，逻辑压缩版"""
+        # 格式: (表名, 列名, 类型与默认值)
+        upgrades = [
+            ("feed_stats", "poop_count", "INTEGER DEFAULT 0"),
+            ("user_state", "forgiven_count", "INTEGER DEFAULT 0"),
+            ("feed_stats", "riceball_count", "INTEGER DEFAULT 0"),
+            ("feed_stats", "visited_groups", "TEXT DEFAULT ''"),
+        ]
+        # 加上那堆食物
+        for food in ["hamburger", "pizza", "bento", "mushroom", "lollipop"]:
+            upgrades.append(("feed_stats", f"{food}_count", "INTEGER DEFAULT 0"))
+
         with self._get_conn() as conn:
             cursor = conn.cursor()
-            try:
-                # 尝试给 feed_stats 增加 poop_count 列
-                cursor.execute("ALTER TABLE feed_stats ADD COLUMN poop_count INTEGER DEFAULT 0")
-                conn.commit()
-                logger.info("[Atri] 数据库升级成功：已为 feed_stats 表增加 poop_count 列。")
-            except sqlite3.OperationalError:
-                # 如果列已经存在，SQLite 会报错，我们直接忽略即可
-                pass
-            try:
-                cursor.execute("ALTER TABLE user_state ADD COLUMN forgiven_count INTEGER DEFAULT 0")
-                conn.commit()
-            except sqlite3.OperationalError:
-                pass
-            for food in ["hamburger", "pizza", "bento", "mushroom", "lollipop"]:
+            for table, column, definition in upgrades:
                 try:
-                    cursor.execute(f"ALTER TABLE feed_stats ADD COLUMN {food}_count INTEGER DEFAULT 0")
+                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
                     conn.commit()
+                    logger.info(f"[Atri] 数据库升级：表 {table} 已增加列 {column}")
                 except sqlite3.OperationalError:
-                    pass
-            try:
-                cursor.execute("ALTER TABLE feed_stats ADD COLUMN riceball_count INTEGER DEFAULT 0")
-                conn.commit()
-            except sqlite3.OperationalError:
-                pass
-            try:
-                cursor.execute("ALTER TABLE feed_stats ADD COLUMN visited_groups TEXT DEFAULT ''")
-                conn.commit()
-                logger.info("[Atri] 数据库升级：已补齐 visited_groups 字段。")
-            except sqlite3.OperationalError:
-                # 如果列已经存在，直接跳过
-                pass
+                    continue # 列已存在，跳过
 
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
@@ -77,6 +64,15 @@ class AtriDB:
                 apple_count INTEGER DEFAULT 0, noodle_count INTEGER DEFAULT 0,
                 shavedice_count INTEGER DEFAULT 0, crab_count INTEGER DEFAULT 0,
                 poop_count INTEGER DEFAULT 0,
+                PRIMARY KEY (user_id, group_id))''')
+            #添加经济系统
+            cursor.execute('''CREATE TABLE IF NOT EXISTS user_economy (
+                user_id TEXT, 
+                group_id TEXT,
+                crab_coin INTEGER DEFAULT 0,
+                stamina INTEGER DEFAULT 100,
+                last_signin TEXT DEFAULT '',
+                last_work_time INTEGER DEFAULT 0,
                 PRIMARY KEY (user_id, group_id))''')
             conn.commit()
 
@@ -267,9 +263,35 @@ class AtriDB:
             """, (user_id,))
             row = cur.fetchone()
             return row[0] if row else None
+    def get_user_economy(self, user_id, group_id):
+        group_id = self._format_gid(group_id)
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT crab_coin, stamina, last_signin, last_work_time FROM user_economy WHERE user_id=? AND group_id=?", (user_id, group_id))
+            row = cur.fetchone()
+            if not row:
+                # 默认值：0金币，100体力
+                cur.execute("INSERT INTO user_economy (user_id, group_id, crab_coin, stamina) VALUES (?, ?, 0, 100)", (user_id, group_id))
+                conn.commit()
+                return 0, 20, "", 0
+            return row
+
+    def update_signin(self, user_id, group_id, coin_delta, stamina_delta):
+        group_id = self._format_gid(group_id)
+        today = datetime.now().strftime("%Y-%m-%d")
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE user_economy 
+                SET crab_coin = crab_coin + ?, 
+                    stamina = stamina + ?, 
+                    last_signin = ? 
+                WHERE user_id = ? AND group_id = ?
+            """, (coin_delta, stamina_delta, today, user_id, group_id))
+            conn.commit()
 
 # 数据库表说明：
 # user_state：长期核心数据
 # feed_log：30 天行为记录
 # feed_stats：各食物累计次数
-# 
+# user_economy：经济系统数据

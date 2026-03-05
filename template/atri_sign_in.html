@@ -1,0 +1,49 @@
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: "Microsoft YaHei", sans-serif;
+        background: linear-gradient(135deg, #fff5f7 0%, #ffe4e1 100%);
+        width: 600px;
+        height: 350px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        border: 2px solid #ffb6c1;
+    }
+    .card {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        width: 80%;
+        position: relative;
+    }
+    h1 { color: #ff69b4; margin-top: 0; font-size: 32px; }
+    .info { font-size: 24px; color: #555; line-height: 1.6; }
+    .footer { color: #ff8c00; font-weight: bold; margin-top: 15px; }
+    .emoji-bg {
+        position: absolute;
+        right: 30px;
+        bottom: 50px;
+        width: 180px;
+        height: 180px;
+        opacity: 0.9;
+    }
+</style>
+
+<body>
+    <div class="card">
+        <h1>🌟 签到成功！</h1>
+        <div class="info">
+            <div>获得：<span style="color:#e67e22">🦀 5 螃蟹币</span></div>
+            <div>恢复：<span style="color:#3498db">⚡ 5 体力</span></div>
+            <div style="margin-top:10px; font-size: 20px;">
+                当前资产：{{ coin }} 币 | {{ stamina }} 体力
+            </div>
+        </div>
+        <div class="footer">亚托莉：嘿嘿，今天也要高性能哦！</div>
+        <img src="{{ emoji_path }}" class="emoji-bg">
+    </div>
+</body>

@@ -214,7 +214,8 @@ class AtriPlugin(Star):
         if not is_group_allowed(event, conf): return
         if self.is_blocked(event): return
         
-        async for result in run_sign_in_logic(event, self.db):
+        # 传入 self.html_render 和 self.curr_dir
+        async for result in run_sign_in_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
 
     # --- 特殊逻辑 ---

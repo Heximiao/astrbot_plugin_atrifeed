@@ -271,7 +271,7 @@ class AtriDB:
             row = cur.fetchone()
             if not row:
                 # 默认值：0金币，100体力
-                cur.execute("INSERT INTO user_economy (user_id, group_id, crab_coin, stamina) VALUES (?, ?, 0, 100)", (user_id, group_id))
+                cur.execute("INSERT INTO user_economy (user_id, group_id, crab_coin, stamina) VALUES (?, ?, 0, 20)", (user_id, group_id))
                 conn.commit()
                 return 0, 20, "", 0
             return row

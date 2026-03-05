@@ -39,6 +39,13 @@ class AtriDB:
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
+            try:
+                cursor.execute("ALTER TABLE feed_stats ADD COLUMN visited_groups TEXT DEFAULT ''")
+                conn.commit()
+                logger.info("[Atri] 数据库升级：已补齐 visited_groups 字段。")
+            except sqlite3.OperationalError:
+                # 如果列已经存在，直接跳过
+                pass
 
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
@@ -64,6 +71,7 @@ class AtriDB:
             # 3. 累计统计表 (各食物次数)
             cursor.execute('''CREATE TABLE IF NOT EXISTS feed_stats (
                 user_id TEXT, group_id TEXT,
+                visited_groups TEXT DEFAULT '',
                 total_count INTEGER DEFAULT 0,
                 strawberry_count INTEGER DEFAULT 0, watermelon_count INTEGER DEFAULT 0,
                 apple_count INTEGER DEFAULT 0, noodle_count INTEGER DEFAULT 0,
@@ -73,8 +81,11 @@ class AtriDB:
             conn.commit()
 
     def _format_gid(self, group_id):
-        """内部方法：统一私聊和群聊的 ID 格式"""
-        return str(group_id) if group_id else "PRIVATE"
+        """
+        强制返回统一标识符。
+        这会导致 user_state 和 feed_stats 表中，每个用户只有一行 'GLOBAL_SHARED' 数据。
+        """
+        return "GLOBAL_SHARED"
     
     def get_user_state(self, user_id, group_id):
             group_id = self._format_gid(group_id)
@@ -141,45 +152,57 @@ class AtriDB:
             conn.commit()
 
     def check_today_fed(self, user_id, group_id, feed_type):
-        group_id = self._format_gid(group_id)
+        # group_id = self._format_gid(group_id) # 这行可以删掉，因为下面不用它
         today = datetime.now().strftime("%Y-%m-%d")
         with self._get_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id FROM feed_log WHERE user_id=? AND group_id=? AND feed_type=? AND feed_date=?", (user_id, group_id, feed_type, today))
+            # 删掉 AND group_id=?，只要 user_id 匹配即可
+            cur.execute("SELECT id FROM feed_log WHERE user_id=? AND feed_type=? AND feed_date=?", 
+                        (user_id, feed_type, today))
             return cur.fetchone() is not None
 
     def record_feeding(self, user_id, group_id, feed_type):
-            group_id = self._format_gid(group_id)
+            #group_id = self._format_gid(group_id)
+            shared_gid = self._format_gid(group_id)
+            real_gid = str(group_id) if group_id else "PRIVATE"
             now = int(time.time())
             today = datetime.now().strftime("%Y-%m-%d")
             limit_ts = int(time.time()) - (30 * 24 * 60 * 60)
             with self._get_conn() as conn:
                 cur = conn.cursor()
                 # 记录前先确保用户存在
-                self._ensure_user_exists(cur, user_id, group_id)
+                self._ensure_user_exists(cur, user_id, shared_gid)
                 
+                cur.execute("SELECT visited_groups FROM feed_stats WHERE user_id=? AND group_id=?", (user_id, shared_gid))
+                old_groups = cur.fetchone()[0] or ""
+                
+                # 如果当前群不在记录里，就追加进去
+                if real_gid not in old_groups.split(','):
+                    new_groups = f"{old_groups},{real_gid}".strip(',')
+                    cur.execute("UPDATE feed_stats SET visited_groups=? WHERE user_id=? AND group_id=?", 
+                            (new_groups, user_id, shared_gid))
+
                 cur.execute("INSERT INTO feed_log (user_id, group_id, feed_type, timestamp, feed_date) VALUES (?, ?, ?, ?, ?)", 
-                            (user_id, group_id, feed_type, now, today))
+                            (user_id, real_gid, feed_type, now, today))
                 cur.execute("DELETE FROM feed_log WHERE timestamp < ?", (limit_ts,))
                 mapping = {"🍓": "strawberry_count", "🍉": "watermelon_count", 
                            "🍎": "apple_count", "🍜": "noodle_count", "🍧": "shavedice_count", "🦀": "crab_count",
                            "🍔": "hamburger_count", "🍕": "pizza_count", "🍱": "bento_count", 
                             "🍄": "mushroom_count", "🍭": "lollipop_count","🍙": "riceball_count"}
                 col = mapping.get(feed_type, "total_count")
-                cur.execute(f"UPDATE feed_stats SET total_count = total_count + 1, {col} = {col} + 1 WHERE user_id=? AND group_id=?", (user_id, group_id))
+                cur.execute(f"UPDATE feed_stats SET total_count = total_count + 1, {col} = {col} + 1 WHERE user_id=? AND group_id=?", (user_id, shared_gid))
                 conn.commit()
 
     def check_continuous_crab(self, user_id, group_id):
-        """检查过去4天是否每天都喂了螃蟹"""
-        group_id = self._format_gid(group_id)
         import datetime as dt
         days = []
         for i in range(4):
             days.append((dt.datetime.now() - dt.timedelta(days=i)).strftime("%Y-%m-%d"))
         with self._get_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT DISTINCT feed_date FROM feed_log WHERE user_id=? AND group_id=? AND feed_type='🦀' AND feed_date IN (?,?,?,?)", 
-                        (user_id, group_id, *days))
+            # 同样删掉 AND group_id=?
+            cur.execute("SELECT DISTINCT feed_date FROM feed_log WHERE user_id=? AND feed_type='🦀' AND feed_date IN (?,?,?,?)", 
+                        (user_id, *days))
             return len(cur.fetchall()) >= 4
 
     def clear_daily_log(self):
@@ -235,16 +258,13 @@ class AtriDB:
             return count > 0
         
     def get_last_feed_time(self, user_id, group_id):
-        """获取用户在对应群组最后一次投喂的时间戳"""
-        group_id = self._format_gid(group_id)
         with self._get_conn() as conn:
             cur = conn.cursor()
-            # 从 feed_log 中按时间倒序取第一条
             cur.execute("""
                 SELECT timestamp FROM feed_log 
-                WHERE user_id=? AND group_id=? 
+                WHERE user_id=? 
                 ORDER BY timestamp DESC LIMIT 1
-            """, (user_id, group_id))
+            """, (user_id,))
             row = cur.fetchone()
             return row[0] if row else None
 

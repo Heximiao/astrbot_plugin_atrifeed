@@ -20,7 +20,7 @@ async def run_sign_in_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
     new_coin = coin + 5
     new_stamina = stamina + 5
     db.update_signin(uid, gid, 5, 5)
-    db.update_favorability(uid, gid, 2)
+    #db.update_favorability(uid, gid, 2)
 
     # 3. 准备渲染数据
     # 路径处理：将相对路径转为绝对路径，方便 Playwright 读取

@@ -235,10 +235,15 @@ class AtriDB:
         
     def reset_poop_count(self, user_id, group_id):
         """道歉成功后，将便便次数清零"""
+        # 必须先格式化 GID，否则找不到 "GLOBAL_SHARED" 对应的记录
+        group_id = self._format_gid(group_id) 
         with self._get_conn() as conn:
             cur = conn.cursor()
+            # 执行更新
             cur.execute("UPDATE feed_stats SET poop_count = 0 WHERE user_id=? AND group_id=?", (user_id, group_id))
             conn.commit()
+            # 打印个日志方便你调试
+            logger.info(f"[Atri] 已重置用户 {user_id} 的便便计数器")
 
     def increase_forgiven_and_check_global(self, user_id, group_id):
         """增加原谅次数并检查是否触发全局拉黑"""

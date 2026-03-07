@@ -248,10 +248,16 @@ class AtriPlugin(Star):
         uid = event.get_sender_id()
         gid = event.get_group_id()
         is_blocked_total = self.db.get_blocked_total(uid)
-        
+        fav, is_blocked = self.db.get_user_state(uid, gid)
+        is_apology_msg = "亚托莉我错了对不起" in event.message_str
         # 2. 获取累计原谅次数
         total_forgiven = self.db.get_total_forgiven(uid)
         
+        if is_blocked == 1 and not is_apology_msg:
+            use_qq_ban = conf.get("global_ban_use_qq", True)
+            if use_qq_ban:
+                event.stop_event() # 彻底拦截
+
         # 3. 如果已经达到原谅上限，直接拦截所有消息
         if total_forgiven >= 1 and is_blocked_total > 1:
             use_qq_ban = conf.get("global_ban_use_qq", True)

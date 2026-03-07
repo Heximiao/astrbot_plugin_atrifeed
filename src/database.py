@@ -19,6 +19,7 @@ class AtriDB:
             ("user_state", "forgiven_count", "INTEGER DEFAULT 0"),
             ("feed_stats", "riceball_count", "INTEGER DEFAULT 0"),
             ("feed_stats", "visited_groups", "TEXT DEFAULT ''"),
+            ("user_state", "is_blocked_total", "INTEGER DEFAULT 0"),
         ]
         # 加上那堆食物
         for food in ["hamburger", "pizza", "bento", "mushroom", "lollipop"]:
@@ -45,6 +46,7 @@ class AtriDB:
                 user_id TEXT, group_id TEXT,
                 favorability INTEGER DEFAULT 10,
                 is_blocked INTEGER DEFAULT 0,
+                is_blocked_total INTEGER DEFAULT 0,
                 forgiven_count INTEGER DEFAULT 0,
                 first_seen_time INTEGER,
                 PRIMARY KEY (user_id, group_id))''')
@@ -120,21 +122,32 @@ class AtriDB:
             cursor.execute("INSERT INTO feed_stats (user_id, group_id) VALUES (?, ?)", (user_id, group_id))
 
     def update_favorability(self, user_id, group_id, delta):
-            group_id = self._format_gid(group_id)
-            with self._get_conn() as conn:
-                cur = conn.cursor()
-                # 更新前先确保用户存在
-                self._ensure_user_exists(cur, user_id, group_id)
-                
-                cur.execute("UPDATE user_state SET favorability = favorability + ? WHERE user_id=? AND group_id=?", (delta, user_id, group_id))
-                cur.execute("SELECT favorability FROM user_state WHERE user_id=? AND group_id=?", (user_id, group_id))
-                fav = cur.fetchone()[0]
-                if fav < 5:
-                    cur.execute("UPDATE user_state SET is_blocked = 1 WHERE user_id=? AND group_id=?", (user_id, group_id))
+        group_id = self._format_gid(group_id)
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            self._ensure_user_exists(cur, user_id, group_id)
+            cur.execute("UPDATE user_state SET favorability = favorability + ? WHERE user_id=? AND group_id=?", (delta, user_id, group_id))
+            # 2. 查询当前的好感度、拉黑状态和累计拉黑次数
+            # 注意：这里必须确保 SQL 语句里的列名和数量与后面解包的数量一致
+            cur.execute("SELECT favorability, is_blocked, is_blocked_total FROM user_state WHERE user_id=? AND group_id=?", (user_id, group_id))
+            row = cur.fetchone()
+            
+            if not row: return 10 # 安全保护
+            
+            fav, old_is_blocked, blocked_total = row # 解包 3 个值
+            
+            # 3. 判定逻辑
+            if fav < 5:
+                if old_is_blocked == 0:
+                    # 如果之前是 0 (未拉黑)，现在变 1，则累计次数 +1
+                    cur.execute("UPDATE user_state SET is_blocked = 1, is_blocked_total = is_blocked_total + 1 WHERE user_id=? AND group_id=?", (user_id, group_id))
                 else:
-                    cur.execute("UPDATE user_state SET is_blocked = 0 WHERE user_id=? AND group_id=?", (user_id, group_id))
-                conn.commit()
-                return fav
+                    cur.execute("UPDATE user_state SET is_blocked = 1 WHERE user_id=? AND group_id=?", (user_id, group_id))
+            else:
+                cur.execute("UPDATE user_state SET is_blocked = 0 WHERE user_id=? AND group_id=?", (user_id, group_id))
+            
+            conn.commit()
+            return fav
 
     def unblock_user(self, user_id, group_id):
         """用户道歉成功，全局撤销拉黑状态并重置好感度"""
@@ -289,6 +302,20 @@ class AtriDB:
                 WHERE user_id = ? AND group_id = ?
             """, (coin_delta, stamina_delta, today, user_id, group_id))
             conn.commit()
+    def get_total_forgiven(self, user_id):
+        """仅查询该用户在所有群的累计原谅次数，不增加次数"""
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT SUM(forgiven_count) FROM user_state WHERE user_id=?", (user_id,))
+            res = cur.fetchone()
+            return res[0] if res and res[0] else 0
+    
+    def get_blocked_total(self, user_id):
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT SUM(is_blocked_total) FROM user_state WHERE user_id=?", (user_id,))
+            res = cur.fetchone()
+            return res[0] if res and res[0] else 0
 
 # 数据库表说明：
 # user_state：长期核心数据

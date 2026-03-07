@@ -239,47 +239,53 @@ class AtriPlugin(Star):
             async for result in run_abuse_logic(event, self.db, self.curr_dir):
                 yield result
 
-    @filter.event_message_type(filter.EventMessageType.ALL)
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     async def on_apology(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})
         if not is_group_allowed(event, conf): return
+
+        # 1. 先定义 uid 和 gid，确保后面任何地方都能用
+        uid = event.get_sender_id()
+        gid = event.get_group_id()
+        is_blocked_total = self.db.get_blocked_total(uid)
         
+        # 2. 获取累计原谅次数
+        total_forgiven = self.db.get_total_forgiven(uid)
+        
+        # 3. 如果已经达到原谅上限，直接拦截所有消息
+        if total_forgiven >= 1 and is_blocked_total > 1:
+            use_qq_ban = conf.get("global_ban_use_qq", True)
+            if use_qq_ban:
+                event.stop_event() # 彻底拦截
+                # 只有当他还在复读道歉时，才回最后一句，否则保持沉默
+                if "亚托莉我错了对不起" in event.message_str:
+                    yield event.plain_result("...亚托莉已经不想再听到你的声音了。")
+                return 
+
+        # 4. 处理道歉逻辑
         if "亚托莉我错了对不起" in event.message_str:
-            uid = event.get_sender_id()
-            gid = event.get_group_id()
             fav, is_blocked = self.db.get_user_state(uid, gid)
             
-            # 如果 is_blocked 为 0，没有被拉黑，直接 return
+            # 如果没被拉黑，就不需要道歉
             if is_blocked == 0:
                 yield event.plain_result("亚托莉...才..才没有生气呢！")
                 async for res in yield_random_folder_pic(event, self.curr_dir, ["angry"]):
                     yield res
                 return
+
+            # 计数器增加
             self.apology_count[uid] = self.apology_count.get(uid, 0) + 1
             
             if self.apology_count[uid] >= 3:
-                # 注意这里：通过 self.db 调用
-                total_forgiven = self.db.increase_forgiven_and_check_global(uid, gid)
+                # 触发原谅，增加数据库次数
+                new_total = self.db.increase_forgiven_and_check_global(uid, gid)
                 
-                if total_forgiven >= 2:
-                    #use_qq_ban = conf.get("global_ban_use_qq", False)
-                    
-                    # 插件级全局拉黑：锁死当前群的好感度，配合上面的全局检查
-                    self.db.update_favorability(uid, gid, -999) 
-                    use_qq_ban = conf.get("global_ban_use_qq", True)
-                    if use_qq_ban:
-                        # QQ级全局拉黑：AstrBot 框架层面直接拦截（目前没用）
-                        self.context.block_user(uid) 
-                        yield event.plain_result("...这是你最后一次机会，但你已经耗尽了亚托莉的仁慈。再见。")
-                    else:
-                        yield event.plain_result("亚托莉已经原谅你太多次了。你的名字已被永久记录，亚托莉再也不会理你了。")
-                    return
-
-                # 正常原谅逻辑
+                # 解锁逻辑
                 self.db.unblock_user(uid, gid)
                 self.db.reset_poop_count(uid, gid)
                 self.apology_count[uid] = 0
-                yield event.plain_result(f"既然你这么诚恳...亚托莉就原谅你这一次吧！(累计原谅次数：{total_forgiven})")
+                self.db.reset_poop_count(uid, gid)
+                yield event.plain_result(f"既然你这么诚恳...亚托莉就原谅你这一次吧！(累计原谅次数：{new_total})")
             else:
                 yield event.plain_result(f"哼，亚托莉还在生气！（{self.apology_count[uid]}/3）")
 

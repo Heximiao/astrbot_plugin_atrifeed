@@ -20,6 +20,7 @@ from .src.command.radish import run_radish_logic
 from .src.command.other_emoji import run_injection_logic
 from .src.command.sign_in import run_sign_in_logic
 from .src.ban import run_apology_logic
+from .src.command.gig import run_gig_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -58,6 +59,7 @@ class AtriPlugin(Star):
                 "radish_cmd": self.radish_cmd,
                 "injection_effect": self.injection_cmd,
                 "atri_signin": self.atri_signin,
+                "atri_work": self.atri_work,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 
@@ -205,6 +207,16 @@ class AtriPlugin(Star):
         
         # 传入 self.html_render 和 self.curr_dir
         async for result in run_sign_in_logic(event, self.db, self.curr_dir, self.html_render):
+            yield result
+
+    @filter.command("亚托莉打工")
+    async def atri_work(self, event: AstrMessageEvent):
+        """努力打工赚取螃蟹币"""
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_gig_logic(event, self.db, self.curr_dir):
             yield result
 
     # --- 特殊逻辑 ---

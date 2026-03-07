@@ -20,6 +20,7 @@ class AtriDB:
             ("feed_stats", "riceball_count", "INTEGER DEFAULT 0"),
             ("feed_stats", "visited_groups", "TEXT DEFAULT ''"),
             ("user_state", "is_blocked_total", "INTEGER DEFAULT 0"),
+            ("user_economy", "last_work_refuse", "TEXT DEFAULT ''"),
         ]
         # 加上那堆食物
         for food in ["hamburger", "pizza", "bento", "mushroom", "lollipop"]:
@@ -281,17 +282,17 @@ class AtriDB:
             """, (user_id,))
             row = cur.fetchone()
             return row[0] if row else None
+    
     def get_user_economy(self, user_id, group_id):
         group_id = self._format_gid(group_id)
         with self._get_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT crab_coin, stamina, last_signin, last_work_time FROM user_economy WHERE user_id=? AND group_id=?", (user_id, group_id))
+            cur.execute("SELECT crab_coin, stamina, last_signin, last_work_time, last_work_refuse FROM user_economy WHERE user_id=? AND group_id=?", (user_id, group_id))
             row = cur.fetchone()
             if not row:
-                # 默认值：0金币，100体力
                 cur.execute("INSERT INTO user_economy (user_id, group_id, crab_coin, stamina) VALUES (?, ?, 0, 20)", (user_id, group_id))
                 conn.commit()
-                return 0, 20, "", 0
+                return 0, 20, "", 0, ""
             return row
 
     def update_signin(self, user_id, group_id, coin_delta, stamina_delta):
@@ -321,6 +322,28 @@ class AtriDB:
             cur.execute("SELECT SUM(is_blocked_total) FROM user_state WHERE user_id=?", (user_id,))
             res = cur.fetchone()
             return res[0] if res and res[0] else 0
+    
+    def update_work_result(self, user_id, group_id, coin_delta, stamina_delta, work_time):
+        group_id = self._format_gid(group_id)
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE user_economy 
+                SET crab_coin = crab_coin + ?, 
+                    stamina = stamina + ?, 
+                    last_work_time = ? 
+                WHERE user_id = ? AND group_id = ?
+            """, (coin_delta, stamina_delta, work_time, user_id, group_id))
+            conn.commit()
+
+    def set_work_refuse(self, user_id, group_id):
+        group_id = self._format_gid(group_id)
+        today = datetime.now().strftime("%Y-%m-%d")
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE user_economy SET last_work_refuse = ? WHERE user_id = ? AND group_id = ?", 
+                    (today, user_id, group_id))
+            conn.commit()
 
 # 数据库表说明：
 # user_state：长期核心数据

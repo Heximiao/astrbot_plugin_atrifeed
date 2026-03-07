@@ -8,7 +8,7 @@ async def run_sign_in_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
     gid = event.get_group_id()
     
     # 获取当前经济状态
-    coin, stamina, last_signin, _ = db.get_user_economy(uid, gid)
+    coin, stamina, last_signin, *others = db.get_user_economy(uid, gid)
     today = datetime.now().strftime("%Y-%m-%d")
     
     # 1. 检查重复签到 (重复签到我们依然用文字，省资源)

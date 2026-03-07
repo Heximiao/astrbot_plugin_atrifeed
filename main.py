@@ -19,6 +19,7 @@ from .src.command.my_atri import run_my_atri_logic
 from .src.command.radish import run_radish_logic
 from .src.command.other_emoji import run_injection_logic
 from .src.command.sign_in import run_sign_in_logic
+from .src.ban import run_apology_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -76,40 +77,28 @@ class AtriPlugin(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_keyword_msg(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})
-        if not is_group_allowed(event, conf):
-            return
+        # 1. 基础过滤
+        if not is_group_allowed(event, conf): return
         message_str = event.message_str
         if not message_str or event.is_at_or_wake_command: return 
 
-        # 只有当消息包含关键词或者是指令前缀时，才继续往下走逻辑
-        # 这样普通闲聊就不会触发后面的数据库查询 is_blocked
+        # 2. 核心开关检查：如果关键词触发关闭，且不是指令前缀，直接返回
+        keyword_enabled = conf.get("keyword_trigger_enabled", True)
         is_potential_cmd = message_str.startswith(self._keyword_trigger_block_prefixes)
-        route = self._keyword_router.match_route(message_str, mode=self._get_keyword_trigger_mode())
         
-        if not is_potential_cmd and not route:
+        if not keyword_enabled and not is_potential_cmd:
             return
-        
-        # 黑名单拦截 (除了道歉语句)
-        if "亚托莉我错了对不起" not in event.message_str:
-            if self.is_blocked(event):
-                return
-        
-        conf = self.config if self.config else (self.context.get_config() or {})
-        if not conf.get("keyword_trigger_enabled", True):
-            return
-
-        message_str = event.message_str
-        if not message_str or event.is_at_or_wake_command: return 
-
-        if message_str.startswith(self._keyword_trigger_block_prefixes):
-            return
-
+        # 3. 匹配路由
         mode = self._get_keyword_trigger_mode()
         route = self._keyword_router.match_route(message_str, mode=mode)
         
+        # 如果是指令前缀开头的，直接由框架自带的 @filter.command 处理，这里跳过
+        if is_potential_cmd:
+            return
         if route is None:
             route = self._keyword_router.match_command_route(message_str)
             
+        # 4. 执行匹配到的 handler
         if route:
             handler = self._keyword_handlers.get(route.action)
             if handler:
@@ -242,58 +231,19 @@ class AtriPlugin(Star):
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     async def on_apology(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})
-        if not is_group_allowed(event, conf): return
+        if not is_group_allowed(event, conf): 
+            return
 
-        # 1. 先定义 uid 和 gid，确保后面任何地方都能用
-        uid = event.get_sender_id()
-        gid = event.get_group_id()
-        is_blocked_total = self.db.get_blocked_total(uid)
-        fav, is_blocked = self.db.get_user_state(uid, gid)
-        is_apology_msg = "亚托莉我错了对不起" in event.message_str
-        # 2. 获取累计原谅次数
-        total_forgiven = self.db.get_total_forgiven(uid)
-        
-        if is_blocked == 1 and not is_apology_msg:
-            use_qq_ban = conf.get("global_ban_use_qq", True)
-            if use_qq_ban:
-                event.stop_event() # 彻底拦截
-
-        # 3. 如果已经达到原谅上限，直接拦截所有消息
-        if total_forgiven >= 1 and is_blocked_total > 1:
-            use_qq_ban = conf.get("global_ban_use_qq", True)
-            if use_qq_ban:
-                event.stop_event() # 彻底拦截
-                # 只有当他还在复读道歉时，才回最后一句，否则保持沉默
-                if "亚托莉我错了对不起" in event.message_str:
-                    yield event.plain_result("...亚托莉已经不想再听到你的声音了。")
-                return 
-
-        # 4. 处理道歉逻辑
-        if "亚托莉我错了对不起" in event.message_str:
-            fav, is_blocked = self.db.get_user_state(uid, gid)
-            
-            # 如果没被拉黑，就不需要道歉
-            if is_blocked == 0:
-                yield event.plain_result("亚托莉...才..才没有生气呢！")
-                async for res in yield_random_folder_pic(event, self.curr_dir, ["angry"]):
-                    yield res
-                return
-
-            # 计数器增加
-            self.apology_count[uid] = self.apology_count.get(uid, 0) + 1
-            
-            if self.apology_count[uid] >= 3:
-                # 触发原谅，增加数据库次数
-                new_total = self.db.increase_forgiven_and_check_global(uid, gid)
-                
-                # 解锁逻辑
-                self.db.unblock_user(uid, gid)
-                self.db.reset_poop_count(uid, gid)
-                self.apology_count[uid] = 0
-                self.db.reset_poop_count(uid, gid)
-                yield event.plain_result(f"既然你这么诚恳...亚托莉就原谅你这一次吧！(累计原谅次数：{new_total})")
-            else:
-                yield event.plain_result(f"哼，亚托莉还在生气！（{self.apology_count[uid]}/3）")
+        # 2. 直接调用逻辑层
+        # 注意：这里传递了 self.apology_count 引用，以便在 ban.py 中修改它
+        async for result in run_apology_logic(
+            event, 
+            self.db, 
+            conf, 
+            self.curr_dir, 
+            self.apology_count
+        ):
+            yield result
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("clear_feed_log")

@@ -14,6 +14,7 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
     mode_text = {"exact": "完全匹配", "starts_with": "开头匹配", "contains": "包含关键词"}.get(trigger_mode, "未知")
 
     help_items = [
+        {"command": "亚托莉帮助", "description": "显示此图片帮助"},
         {"command": "🦀", "description": "投喂螃蟹"},
         {"command": "🍓/🍉/🍎/🍜/🍧/🍔/🍕/🍱/🍄/🍭/🍙", "description": "投喂加好感"},
         {"command": "✨/🚬/💩/💉", "description": "触发各种言语"},
@@ -21,6 +22,7 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         {"command": "萝卜子", "description": "猜猜看会发生什么（笑）"},
         {"command": "亚托莉签到", "description": "签到获取奖励"},
         {"command": "亚托莉打工", "description": "萝卜子打工赚钱！"},
+        {"command": "亚托莉骰子", "description": "摇骰子决定命运"},
         {"command": "亚托莉我错了对不起", "description": "被拉黑道歉尝试恢复好感"},
     ]
 

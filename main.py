@@ -21,6 +21,7 @@ from .src.command.other_emoji import run_injection_logic
 from .src.command.sign_in import run_sign_in_logic
 from .src.ban import run_apology_logic
 from .src.command.gig import run_gig_logic
+from .src.command.dice import run_dice_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -60,6 +61,7 @@ class AtriPlugin(Star):
                 "injection_effect": self.injection_cmd,
                 "atri_signin": self.atri_signin,
                 "atri_work": self.atri_work,
+                "atri_dice": self.atri_dice,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 
@@ -219,6 +221,16 @@ class AtriPlugin(Star):
         async for result in run_gig_logic(event, self.db, self.curr_dir):
             yield result
 
+    @filter.command("亚托莉骰子", alias={"🎲", "dice"})
+    async def atri_dice(self, event: AstrMessageEvent):
+        """随机获取螃蟹币和体力，每天一次"""
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_dice_logic(event, self.db, self.curr_dir):
+            yield result
+
     # --- 特殊逻辑 ---
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -245,7 +257,6 @@ class AtriPlugin(Star):
         conf = self.config if self.config else (self.context.get_config() or {})
         if not is_group_allowed(event, conf): 
             return
-
         # 2. 直接调用逻辑层
         # 注意：这里传递了 self.apology_count 引用，以便在 ban.py 中修改它
         async for result in run_apology_logic(

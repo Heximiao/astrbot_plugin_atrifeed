@@ -21,6 +21,7 @@ class AtriDB:
             ("feed_stats", "visited_groups", "TEXT DEFAULT ''"),
             ("user_state", "is_blocked_total", "INTEGER DEFAULT 0"),
             ("user_economy", "last_work_refuse", "TEXT DEFAULT ''"),
+            ("user_economy", "last_dice_time", "TEXT DEFAULT ''"),
         ]
         # 加上那堆食物
         for food in ["hamburger", "pizza", "bento", "mushroom", "lollipop"]:
@@ -343,6 +344,20 @@ class AtriDB:
             cur = conn.cursor()
             cur.execute("UPDATE user_economy SET last_work_refuse = ? WHERE user_id = ? AND group_id = ?", 
                     (today, user_id, group_id))
+            conn.commit()
+
+    def update_dice_result(self, user_id, group_id, num):
+        group_id = self._format_gid(group_id)
+        today = datetime.now().strftime("%Y-%m-%d")
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE user_economy 
+                SET crab_coin = crab_coin + ?, 
+                    stamina = stamina + ?, 
+                    last_dice_time = ? 
+                WHERE user_id = ? AND group_id = ?
+            """, (num, num, today, user_id, group_id))
             conn.commit()
 
 # 数据库表说明：

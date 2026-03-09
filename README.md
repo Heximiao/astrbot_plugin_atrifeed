@@ -4,7 +4,7 @@
 
 基于AstrBot框架开发的高性能机器人互动插件。通过记录群内成员与亚托莉的互动数据，实现投喂、羁绊养成、黑名单惩罚等功能，并生成精美的个人羁绊名片。
 
-目前还处于测试阶段，还有很多功能需要添加。如发现问题或者有有趣的想法欢迎提issue！
+目前还处于测试阶段，还有很多功能需要添加，有可能会发生较大变动。如发现问题或者有有趣的想法欢迎提issue！
 
 请注意：2026.3.5号之前有使用此插件的更新会导致历史记录丢失。如果报错，请关闭bot删除数据库再重载插件
 
@@ -21,31 +21,43 @@
 
 ```text
 astrbot_plugin_atrifeed/
-├── main.py               # 插件主逻辑入口 (Star 类)
-├── keyword_trigger.py    # 自定义关键词匹配路由引擎
-├── metadata.yaml         # 插件元数据
-├── _conf_schema.json     # 配置定义文件
-├── LICENSE               # 项目许可证
-├── logo.png              # 插件图标
-├── src/                  # 核心源代码目录
-│   ├── constants.py      # 常量定义与默认关键词路由配置
-│   ├── database.py       # SQLite 数据库管理类 (AtriDB)
-│   ├── utils.py          # 群组权限校验等工具函数
-│   └── command/          # 业务逻辑拆分实现
-│       ├── feeding.py    # 投喂逻辑 (螃蟹、水果、主食等)
-│       ├── abuse.py      # 辱骂检测逻辑
-│       ├── help.py       # 帮助菜单渲染逻辑
-│       ├── my_atri.py    # 羁绊卡片渲染逻辑
-│       ├── radish.py     # 萝卜子特殊指令逻辑
-│       └── other_emoji.py # 针筒等表情互动逻辑
-├── pic/                  # 静态资源目录
-│   ├── emoji/            # 互动反馈表情包 (含 gif/jpg/png)
-│   ├── lihui/            # 渲染卡片用的随机立绘库
-│   └── pictorial/        # 卡片背景与装饰素材
-├── template/             # HTML 渲染模板
-│   ├── atri_help.html    # 帮助菜单 HTML 模板
-│   └── my_atri1.html     # 羁绊卡片 HTML 模板
-└── __pycache__/          # 编译缓存 (运行自动生成)
+├── main.py                # 插件入口：注册指令、分发事件、初始化数据库及路径
+├── keyword_trigger.py     # 核心路由：支持正则/模糊/精确匹配关键词的引擎
+├── metadata.yaml          # 插件元数据 (名称、作者、版本等)
+├── _conf_schema.json      # 配置项定义 (开关、触发模式等)
+├── README.md              # 项目说明文档
+├── CHANGELOG.md           # 版本更新日志
+├── LICENSE                # 项目许可证
+├── logo.png               # 插件图标
+├── src/                   # 核心逻辑目录
+│   ├── __init__.py        # 模块初始化
+│   ├── constants.py       # 存放默认关键词映射 (_DEFAULT_KEYWORD_ROUTES)
+│   ├── database.py        # 数据库操作中心 (处理好感度、金币、签到、黑名单)
+│   ├── utils.py           # 工具类 (is_group_allowed 群聊过滤等)
+│   ├── ban.py             # 惩罚与道歉逻辑 (run_apology_logic)
+│   └── command/           # 业务指令实现目录
+│       ├── __init__.py    
+│       ├── feeding.py     # 投喂逻辑 (螃蟹、水果等)
+│       ├── abuse.py       # 辱骂检测与黑名单处罚逻辑
+│       ├── help.py        # 帮助菜单渲染
+│       ├── my_atri.py     # 羁绊/属性卡片渲染
+│       ├── radish.py      # 萝卜子/飞舞萝卜子互动
+│       ├── other_emoji.py # 针筒等表情互动
+│       ├── sign_in.py     # 签到逻辑
+│       ├── gig.py         # 打工逻辑
+│       └── dice.py        # 骰子/博弈逻辑
+├── pic/                   # 静态资源
+│   ├── demo/              # README 使用的示例图 (帮助、卡片演示)
+│   ├── emoji/             # 互动反馈表情包 (含子文件夹：angry, bad, radish 等)
+│   ├── lihui/             # 角色立绘库 (含 gig 打工专属立绘)
+│   ├── pictorial/         # 卡片背景素材
+│   └── sign_in/           # 签到功能专用配图
+├── template/              # HTML 渲染模板 (用于生成图片)
+│   ├── atri_help.html     
+│   ├── atri_sign_in.html  # 签到卡片模板
+│   ├── gig.html           # 打工结算模板
+│   └── my_atri1.html      # 羁绊卡片模板
+└── __pycache__/           # 自动生成的编译缓存
 
 ```
 

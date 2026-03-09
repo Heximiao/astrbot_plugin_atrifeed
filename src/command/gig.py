@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 # 导入同级目录 feeding.py 中的工具函数
 from .feeding import send_combined_msg, get_pic_path
+import astrbot.api.message_components as Comp
 
 async def run_gig_logic(event, db, curr_dir, html_render):
     uid = event.get_sender_id()
@@ -80,8 +81,8 @@ async def run_gig_logic(event, db, curr_dir, html_render):
         # 参照 rbq 排行，预估高度
         # header(80) + quote(80) + stats(120) + food(200) + footer(50) 
         # 设为 650 比较稳妥
-        render_width = 600
-        render_height = 587
+        render_width = 770
+        render_height = 390
 
         url = await html_render(
             tmpl_content, 
@@ -91,7 +92,7 @@ async def run_gig_logic(event, db, curr_dir, html_render):
                 "quality": None,
                 "full_page": False, 
                 "clip": {
-                    "x": 0,
+                    "x": 15,
                     "y": 0,
                     "width": render_width,
                     "height": render_height
@@ -100,6 +101,12 @@ async def run_gig_logic(event, db, curr_dir, html_render):
                 "device_scale_factor_level": "ultra"
             }
         )
-        yield event.image_result(url)
+        #yield event.image_result(url)
+        chain = [
+            Comp.Plain("  哼~哼~哼~，打工~"),
+            Comp.Image.fromURL(url),
+            Comp.At(qq=event.get_sender_id()),
+        ]
+        yield event.chain_result(chain)
     except Exception as e:
         yield event.plain_result(f"（；´д｀）渲染失败了... 赚到了 {earn_coin} 币")

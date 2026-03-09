@@ -218,7 +218,8 @@ class AtriPlugin(Star):
         if not is_group_allowed(event, conf): return
         if self.is_blocked(event): return
         
-        async for result in run_gig_logic(event, self.db, self.curr_dir):
+        # 传入 self.html_render
+        async for result in run_gig_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
 
     @filter.command("亚托莉骰子", alias={"🎲", "dice"})

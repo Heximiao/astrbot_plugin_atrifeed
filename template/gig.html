@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            width: 800px; /* 宽度可根据需要调整 */
+            background-color: #A0C4FF; /* 背景蓝色 */
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 760px;
+            height: 380px;
+            background: #BDD7FF; /* 内层浅蓝色 */
+            border-radius: 30px;
+            position: relative;
+            display: flex;
+            overflow: hidden;
+            border: 5px solid #FFFFFF;
+        }
+        .header {
+            position: absolute;
+            top: 20px; left: 120px;
+            background: #E2E2B6;
+            padding: 5px 30px;
+            border-radius: 15px;
+            font-size: 24px;
+            color: #A686B6;
+            font-weight: bold;
+        }
+        .stats-list {
+            margin-top: 80px;
+            margin-left: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .stat-label { margin-right: 20px; color: #FFFFFF; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .stat-value-pos { color: #8CFF95; } /* 绿色 */
+        .stat-value-neg { color: #EEFF8C; } /* 黄色/红色 */
+        
+        .character-img {
+            position: absolute;
+            right: 20px;
+            bottom: -60px;
+            height: 110%; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">亚托莉正在努力打工！</div>
+        
+        <div class="stats-list">
+            <div class="stat-item">
+                <span class="stat-label">🦀 螃蟹币</span>
+                <span class="stat-value-pos">+{{ earn_coin }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🤸 体力值</span>
+                <span class="stat-value-neg">-{{ cost_stamina }}</span>
+            </div>
+        </div>
+
+        <img src="file:///{{ lihui_path }}" class="character-img">
+    </div>
+</body>
+</html>

@@ -10,46 +10,45 @@ async def run_gig_logic(event, db, curr_dir, html_render):
     uid = event.get_sender_id()
     gid = event.message_obj.group_id
     
-    # 获取经济数据并解包
     economy = db.get_user_economy(uid, gid)
-    # 确保这里的顺序和数据库查询语句一致
     coin, curr_stamina, last_signin, last_work_time, last_work_refuse = economy
     
     today = datetime.now().strftime("%Y-%m-%d")
-    tired_img = os.path.join(curr_dir, "pic", "emoji", "tired", "atri_tired1.jpg")
-    
-    # A. 优先检查今天是否已经拒绝过
-    if last_work_refuse == today:
-        async for result in send_combined_msg(event, "亚托莉今天不想打工...", tired_img):
-            yield result
-        return
-
-    # B. 罢工随机判断 (为了测试，建议放在 CD 检查前)
-    # 0.1 的概率触发
-    if random.random() < 0.1: 
-        db.set_work_refuse(uid, gid)
-        async for result in send_combined_msg(event, "亚托莉今天不想打工...", tired_img):
-            yield result
-        return
-
-    # C. 检查冷却时间
     now_ts = int(time.time())
+    tired_img = os.path.join(curr_dir, "pic", "emoji", "tired", "atri_tired1.jpg")
+
+    # === 1. 优先检查 CD (正在打工中) ===
     if last_work_time > 0:
-        # 5-8小时随机 CD
-        cd_seconds = random.randint(5, 8) * 3600
+        # 建议 CD 稍微设长一点，你代码里写的 random.randint(5, 8) * 3600 是 5-8 小时
+        # 为了测试你可能改成了秒，这里保留原逻辑
+        cd_seconds = random.randint(5, 8) * 3600 
         if now_ts - last_work_time < cd_seconds:
             remaining_mins = int((cd_seconds - (now_ts - last_work_time)) // 60)
             yield event.plain_result(f"亚托莉还在打工呢...大概还需要 {remaining_mins} 分钟才能再次打工。")
             return
 
-    # D. 正常的打工逻辑
+    # === 2. 检查今天是否已经罢工过 ===
+    # 只有 CD 过了，才会走到这一步
+    if last_work_refuse == today:
+        async for result in send_combined_msg(event, "亚托莉今天已经累坏了，不想再打工了...", tired_img):
+            yield result
+        return
+
+    # === 3. 随机判定：是否触发今天的罢工 ===
+    # 只有今天还没罢工，且 CD 过了，才进行 10% 概率判定
+    if random.random() < 0.1: 
+        db.set_work_refuse(uid, gid) # 标记今天罢工
+        async for result in send_combined_msg(event, "亚托莉突然想偷懒，今天不想打工了！", tired_img):
+            yield result
+        return
+
+    # === 4. 正常的体力检查与打工逻辑 ===
     earn_coin = random.randint(10, 15)
     cost_stamina = random.randint(10, 15)
     
     if curr_stamina < cost_stamina:
         yield event.plain_result(f"体力不足！打工需要 {cost_stamina} 体力，当前仅剩 {curr_stamina}。")
         return
-
     # 更新数据库
     db.update_work_result(uid, gid, earn_coin, -cost_stamina, now_ts)
     

@@ -17,7 +17,7 @@ from .src.command.help import run_atri_help_logic
 from .src.command.abuse import run_abuse_logic
 from .src.command.my_atri import run_my_atri_logic
 from .src.command.radish import run_radish_logic
-from .src.command.other_emoji import run_injection_logic
+from .src.command.other_emoji import run_injection_logic, run_sleep_logic
 from .src.command.sign_in import run_sign_in_logic
 from .src.ban import run_apology_logic
 from .src.command.gig import run_gig_logic
@@ -62,6 +62,7 @@ class AtriPlugin(Star):
                 "atri_signin": self.atri_signin,
                 "atri_work": self.atri_work,
                 "atri_dice": self.atri_dice,
+                "sleep_effect": self.sleep_cmd,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 
@@ -80,6 +81,7 @@ class AtriPlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_keyword_msg(self, event: AstrMessageEvent):
+        """处理关键词触发的消息"""
         conf = self.config if self.config else (self.context.get_config() or {})
         # 1. 基础过滤
         if not is_group_allowed(event, conf): return
@@ -231,6 +233,15 @@ class AtriPlugin(Star):
         
         async for result in run_dice_logic(event, self.db, self.curr_dir):
             yield result
+    
+    @filter.command("💤")
+    async def sleep_cmd(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_sleep_logic(event, self.curr_dir):
+            yield result
 
     # --- 特殊逻辑 ---
 
@@ -255,6 +266,7 @@ class AtriPlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     async def on_apology(self, event: AstrMessageEvent):
+        """处理道歉加封禁逻辑"""
         conf = self.config if self.config else (self.context.get_config() or {})
         if not is_group_allowed(event, conf): 
             return

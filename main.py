@@ -10,7 +10,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 from .keyword_trigger import KeywordRouter, MatchMode
 from .src.constants import _DEFAULT_KEYWORD_ROUTES
-from .src.database import AtriDB
+from .src.db.database import AtriDB
 from .src.command.feeding import *
 from .src.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic

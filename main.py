@@ -11,6 +11,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 from .keyword_trigger import KeywordRouter, MatchMode
 from .src.constants import _DEFAULT_KEYWORD_ROUTES
 from .src.db.database import AtriDB
+from .src.db.database_shop import AtriShopDB
 from .src.command.feeding import *
 from .src.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic
@@ -22,6 +23,7 @@ from .src.command.sign_in import run_sign_in_logic
 from .src.ban import run_apology_logic
 from .src.command.gig import run_gig_logic
 from .src.command.dice import run_dice_logic
+from .src.command.shopping import run_shop_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -44,7 +46,8 @@ class AtriPlugin(Star):
             db_file = os.path.join(self.data_dir, "atri_feed.db")
             
             # 传入数据库
-            self.db = AtriDB(db_file)
+            #self.db = AtriDB(db_file)
+            self.db = AtriShopDB(db_file)
 
             self.apology_count = {}
             self._keyword_router = KeywordRouter(routes=_DEFAULT_KEYWORD_ROUTES)
@@ -241,6 +244,16 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         
         async for result in run_sleep_logic(event, self.curr_dir):
+            yield result
+
+    @filter.command("商店")
+    async def atri_shop(self, event: AstrMessageEvent):
+        """亚托莉小卖部：查看或购买物品"""
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_shop_logic(event, self.db):
             yield result
 
     # --- 特殊逻辑 ---

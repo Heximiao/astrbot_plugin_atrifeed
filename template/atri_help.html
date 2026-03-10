@@ -16,6 +16,8 @@
             padding: 0;
             background-color: transparent; /* 方便外层控制 */
             width: 600px; /* 对应 Python 中的 rank_width */
+            height: auto; 
+            overflow: hidden;
         }
 
         #main-container {
@@ -24,10 +26,11 @@
             box-sizing: border-box;
             border-radius: 15px;
             position: relative;
-            overflow: hidden;
-            border: 2px solid var(--primary-color);
+            /*overflow: hidden;
+            border: 2px solid var(--primary-color);*/
             width: 580px; /* 留出一点边距 */
             margin: 10px;
+            min-height: 800px;
         }
 
         header {

@@ -89,12 +89,13 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         options={
             "type": "png",
             "quality": None,
-            "full_page": False, # 必须配合 clip
+            "full_page": True, # 必须配合 clip
             "clip": {
                 "x": 0,
                 "y": 0,
                 "width": render_width,
-                "height": dynamic_height 
+                "height": dynamic_height, 
+                #"height": 1000 
             },
             "scale": "device",
             # 如果这行报错，可以先注释掉

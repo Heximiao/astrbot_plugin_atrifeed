@@ -4,7 +4,7 @@ from astrbot.api.event import AstrMessageEvent
 from .feeding import yield_random_folder_pic 
 
 # 定义敏感词库
-BAD_WORDS = ["傻逼", "sb", "你妈", "垃圾", "死鱼", "废铁", "滚", "去死", "操你妈", "煞笔", "智障"]
+BAD_WORDS = ["傻逼", "sb", "你妈", "垃圾", "死鱼", "去死", "操你妈", "煞笔", "智障"]
 
 def check_abuse(text: str) -> bool:
     """清理干扰字符并检测脏话"""

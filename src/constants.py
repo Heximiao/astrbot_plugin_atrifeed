@@ -19,6 +19,7 @@ _DEFAULT_KEYWORD_ROUTES: tuple[KeywordRoute, ...] = (
     
     KeywordRoute(keyword="✨", action="star_effect"),
     KeywordRoute(keyword="🚬", action="no_smoke"),
+    KeywordRoute(keyword="💤", action="sleep_effect"),
 
     KeywordRoute(keyword="💩", action="poop_effect"),
 

@@ -17,7 +17,7 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         {"command": "亚托莉帮助", "description": "显示此图片帮助"},
         {"command": "🦀", "description": "投喂螃蟹"},
         {"command": "🍓/🍉/🍎/🍜/🍧/🍔/🍕/🍱/🍄/🍭/🍙", "description": "投喂加好感"},
-        {"command": "✨/🚬/💩/💉", "description": "触发各种言语"},
+        {"command": "✨/🚬/💩/💉/💤", "description": "触发各种言语"},
         {"command": "我的亚托莉", "description": "查看羁绊值"},
         {"command": "萝卜子", "description": "猜猜看会发生什么（笑）"},
         {"command": "亚托莉签到", "description": "签到获取奖励"},

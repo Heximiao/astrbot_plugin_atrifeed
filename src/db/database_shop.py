@@ -80,53 +80,6 @@ class AtriShopDB(AtriDB):
             cur.execute("SELECT * FROM shop_items WHERE is_active = 1")
             return [dict(row) for row in cur.fetchall()]
 
-    def buy_item(self, user_id, group_id, item_name, quantity=1):
-        """购买商品逻辑"""
-        group_id = self._format_gid(group_id)
-        now = int(time.time())
-        
-        with self._get_conn() as conn:
-            cur = conn.cursor()
-            
-            # 1. 检查商品是否存在及价格
-            cur.execute("SELECT price FROM shop_items WHERE item_name = ? AND is_active = 1", (item_name,))
-            item_row = cur.fetchone()
-            if not item_row: return False, "商品不存在"
-            
-            total_cost = item_row[0] * quantity
-            
-            # 2. 检查螃蟹币是否足够
-            cur.execute("SELECT crab_coin FROM user_economy WHERE user_id = ? AND group_id = ?", (user_id, group_id))
-            econ_row = cur.fetchone()
-            if not econ_row or econ_row[0] < total_cost:
-                return False, "螃蟹币不足"
-            
-            try:
-                # 3. 扣钱
-                cur.execute("UPDATE user_economy SET crab_coin = crab_coin - ? WHERE user_id = ? AND group_id = ?", 
-                            (total_cost, user_id, group_id))
-                
-                # 4. 进背包 (INSERT OR UPDATE)
-                cur.execute('''
-                    INSERT INTO user_inventory (user_id, group_id, item_name, quantity)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(user_id, group_id, item_name) 
-                    DO UPDATE SET quantity = quantity + excluded.quantity
-                ''', (user_id, group_id, item_name, quantity))
-                
-                # 5. 写日志
-                cur.execute('''
-                    INSERT INTO shop_purchase_log (user_id, group_id, item_name, price, quantity, timestamp)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (user_id, group_id, item_name, item_row[0], quantity, now))
-                
-                conn.commit()
-                return True, f"成功购买 {quantity} 个 {item_name}"
-            except Exception as e:
-                conn.rollback()
-                logger.error(f"购买失败: {e}")
-                return False, "交易出错"
-
     def get_user_inventory(self, user_id, group_id):
         """获取用户背包"""
         group_id = self._format_gid(group_id)
@@ -160,8 +113,9 @@ class AtriShopDB(AtriDB):
             return row[0] if row else 0
 
     def buy_item(self, user_id, group_id, item_name, quantity=1, max_limit=20):
-        """购买商品逻辑 (增强版)"""
+        """购买商品逻辑 (合并版：含上限检查+日志记录)"""
         group_id = self._format_gid(group_id)
+        now = int(time.time())
         
         # 1. 检查商品是否存在
         item = self.get_item_by_name(item_name)
@@ -187,6 +141,7 @@ class AtriShopDB(AtriDB):
                 # 扣钱
                 cur.execute("UPDATE user_economy SET crab_coin = crab_coin - ? WHERE user_id = ? AND group_id = ?", 
                             (total_cost, user_id, group_id))
+                
                 # 进背包
                 cur.execute('''
                     INSERT INTO user_inventory (user_id, group_id, item_name, quantity)
@@ -194,8 +149,17 @@ class AtriShopDB(AtriDB):
                     ON CONFLICT(user_id, group_id, item_name) 
                     DO UPDATE SET quantity = quantity + excluded.quantity
                 ''', (user_id, group_id, item_name, quantity))
+
+                # === 关键：补回被你弄丢的写日志逻辑 ===
+                cur.execute('''
+                    INSERT INTO shop_purchase_log (user_id, group_id, item_name, price, quantity, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (user_id, group_id, item_name, item['price'], quantity, now))
+                # ====================================
+
                 conn.commit()
                 return True, f"成功购买了 {quantity} 个 {item_name}！花费了 {total_cost} 螃蟹币。"
             except Exception as e:
                 conn.rollback()
+                logger.error(f"购买失败: {e}")
                 return False, "交易发生了一点小故障..."

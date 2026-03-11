@@ -169,3 +169,33 @@ class AtriShopDB(AtriDB):
                 conn.rollback()
                 logger.error(f"购买失败: {e}")
                 return False, "交易发生了一点小故障..."
+            
+    def consume_item(self, user_id, group_id, item_name):
+        """消耗一个物品并返回其数据"""
+        group_id = self._format_gid(group_id)
+        
+        # 1. 检查背包里是否有该物品
+        current_qty = self.get_user_item_quantity(user_id, group_id, item_name)
+        if current_qty <= 0:
+            return None, f"你的背包里没有 {item_name} 呢..."
+
+        # 2. 获取物品效果数据
+        item_data = self.get_item_by_name(item_name)
+        if not item_data:
+            return None, f"这种物品（{item_name}）好像已经失传了..."
+
+        # 3. 执行扣除逻辑
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            try:
+                cur.execute('''
+                    UPDATE user_inventory 
+                    SET quantity = quantity - 1 
+                    WHERE user_id = ? AND group_id = ? AND item_name = ?
+                ''', (user_id, group_id, item_name))
+                conn.commit()
+                return item_data, "成功消耗"
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"物品消耗失败: {e}")
+                return None, "使用物品时发生了一点小意外..."

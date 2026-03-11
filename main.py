@@ -25,6 +25,7 @@ from .src.command.gig import run_gig_logic
 from .src.command.dice import run_dice_logic
 from .src.command.shopping import run_shop_logic
 from .src.command.backpack import run_backpack_logic
+from .src.command.use_item import run_use_item_logic
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -266,6 +267,16 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         
         async for result in run_backpack_logic(event, self.db):
+            yield result
+    
+    @filter.command("使用")
+    async def atri_use(self, event: AstrMessageEvent):
+        """使用背包里的物品"""
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        async for result in run_use_item_logic(event, self.db):
             yield result
 
     # --- 特殊逻辑 ---

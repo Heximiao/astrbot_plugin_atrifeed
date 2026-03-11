@@ -22,31 +22,28 @@ async def run_use_item_logic(event: AstrMessageEvent, db):
         return
 
     # 2. 根据 item_type 处理效果
-    item_type = item_data.get('item_type')
     effect_val = item_data.get('effect_value', 0)
-    icon = item_data.get('item_icon', '📦')
-
-    result_msg = f"使用了 {icon} {item_name}！\n"
+    item_type = item_data.get('item_type')
+    name = item_data.get('item_name')
 
     if item_type == "food":
-        # 食物增加体力值
-        db.update_signin(user_id, group_id, 0, effect_val) # 复用 update_signin 的逻辑
-        result_msg += f"美味！体力值增加了 {effect_val} 点。"
-    
+        # 对应：蛋包饭、菠萝、奶茶
+        db.update_signin(user_id, group_id, 0, effect_val)
+        yield event.plain_result(f"投喂了亚托莉 {name} ，体力增加了 {effect_val} 点！好吃就是高兴！")
+
     elif item_type == "apparel":
-        # 服饰增加好感度
+        # 对应：新鞋子、新衣服
         new_fav = db.update_favorability(user_id, group_id, effect_val)
-        result_msg += f"亚托莉很开心！好感度增加了 {effect_val} 点。\n当前好感度：{new_fav}"
-    
+        yield event.plain_result(f"给亚托莉换上了 {name} 👗，好感度增加了 {effect_val} 点！")
+
     elif item_type == "tool":
-        # 工具类逻辑（如机票、烟花）
-        if item_name == "烟花":
+        # 对应：机票、烟花
+        if name == "烟花":
             new_fav = db.update_favorability(user_id, group_id, effect_val)
-            result_msg += f"🎆 砰！绚丽的烟花映照着亚托莉的笑脸。\n好感度大幅提升了 {effect_val} 点！"
-        else:
-            result_msg += f"虽然使用了，但好像还没到时候呢...（该道具目前仅供收藏）"
+            yield event.plain_result(f"🎆 在夏夜的海岸边放了一场绚烂的烟花。好感度大幅增加了 {effect_val} 点！")
+        elif name == "机票":
+            # 机票在你的注释里是剧情道具，建议这里做个阻拦
+            yield event.plain_result(f"✈️ 虽然已经准备好了机票，但似乎距离出发去『圣地巡礼』还需要达成某种契机呢...（目前仅供持有）")
     
     else:
-        result_msg += "这件物品似乎没有什么特殊用途呢。"
-
-    yield event.plain_result(result_msg.strip())
+        yield event.plain_result("这件物品似乎没有什么特殊用途呢。")

@@ -40,6 +40,13 @@ class AtriBayesFilter:
     def is_abuse(self, text: str, threshold: float = 0.7) -> bool:
         """判断是否为辱骂。threshold 越高越不容易误判"""
         words = jieba.lcut(text.lower())
+
+        target_text = text.strip().lower()
+        
+        # 如果这个句子在辱骂库里原封不动出现过，直接返回 True (相当于概率 1.0)
+        # 注意：这里需要我们在 load_data 时顺便存一份原始句子列表
+        if target_text in self.raw_abuse_lines:
+            return True
         
         # P(Abuse|Text) 
         log_p_normal = math.log(self.total_normal / (self.total_normal + self.total_abuse))

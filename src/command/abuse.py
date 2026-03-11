@@ -32,7 +32,9 @@ def check_abuse(text: str) -> bool:
 async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
     # 提取纯文本
     clean_msg = event.message_str.strip()
-    
+
+    if len(clean_msg) > 100:
+        return
     
     # 获取超详细调试信息
     debug = filter_instance.get_debug_info(clean_msg)

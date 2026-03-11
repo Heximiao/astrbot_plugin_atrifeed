@@ -1,10 +1,27 @@
 import random
 import re
 from astrbot.api.event import AstrMessageEvent
-from .feeding import yield_random_folder_pic 
+from .feeding import yield_random_folder_pic
+from ..utils.bayes_filter import AtriBayesFilter
+
+import os
+
+DEBUG_MODE = True
+
+# 获取当前文件 (abuse.py) 的路径 -> src/command/
+current_dir = os.path.dirname(__file__)
+# 向上跳两级，到达插件根目录 -> astrbot_plugin_atrifeed/
+plugin_root = os.path.dirname(os.path.dirname(current_dir))
+# 拼接正确的 data 路径
+data_path = os.path.join(plugin_root, "data")
+
+# 初始化分类器
+filter_instance = AtriBayesFilter(data_path)
 
 # 定义敏感词库
-BAD_WORDS = ["傻逼", "sb", "你妈", "垃圾", "死鱼", "去死", "操你妈", "煞笔", "智障"]
+BAD_WORDS = ["傻逼", "你妈死了", "去死", "操你妈", "煞笔", "智障"]
+
+
 
 def check_abuse(text: str) -> bool:
     """清理干扰字符并检测脏话"""
@@ -13,14 +30,35 @@ def check_abuse(text: str) -> bool:
     return any(word in clean_text for word in BAD_WORDS)
 
 async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
+    # 提取纯文本
+    clean_msg = event.message_str.strip()
     
-    # 移除 CQ 码（如果是 QQ 平台）和首尾空格
-    clean_msg = re.sub(r"\[CQ:at,.*?\]", "", event.message_str).strip().lower()
     
-    if not check_abuse(clean_msg):
-        return
-    # 这里直接用 message_str，因为我们要检测的是 @ 之后的文本
-    if not check_abuse(event.message_str):
+    # 获取超详细调试信息
+    debug = filter_instance.get_debug_info(clean_msg)
+    
+    # 构造展示文本
+    if DEBUG_MODE:
+        report = [f"📊 【调试报告】文本：{clean_msg}"]
+        report.append(f"📈 总辱骂概率: {debug['total_prob']:.4f}")
+        report.append("-" * 20)
+        for w in debug['words']:
+            report.append(f"词: [{w['词']}] | {w['倾向']} (辱骂{w['辱骂分贡献']} vs 正常{w['正常分贡献']})")
+        report.append("-" * 20)
+        report.append(f"判定结果: {debug['final_decision']}")
+
+        # 直接发给用户看
+        yield event.plain_result("\n".join(report))
+    
+    # 1. 极其严重的词（零容忍词库），依然保留硬匹配
+    HARD_WORDS = ["傻逼", "你妈死了", "去死", "操你妈", "煞笔", "智障"] 
+    if any(w in clean_msg.lower() for w in HARD_WORDS):
+        is_violation = True
+    else:
+        # 2. 容易误触的词（垃圾、死、蠢等），交给贝叶斯
+        is_violation = filter_instance.is_abuse(clean_msg, threshold=0.73)
+
+    if not is_violation:
         return
 
     uid, gid = event.get_sender_id(), event.get_group_id()

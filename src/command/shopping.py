@@ -53,13 +53,13 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
         # --- 关键修改：手动精准裁切 ---
         try:
             # 根据背景图 shop1.jpeg 的实际尺寸设定
-            render_width = 1920
-            render_height = 1080
+            render_width = 1150
+            render_height = 700
 
             options = {
                 "type": "jpeg",
                 "quality": 85,
-                "full_page": True, # 禁用自动高度，解决下移立绘带来的白边问题
+                "full_page": False, # 禁用自动高度，解决下移立绘带来的白边问题
                 "clip": {
                     "x": 0,
                     "y": 0,

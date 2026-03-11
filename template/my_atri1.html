@@ -88,6 +88,18 @@
                             <span class="material-symbols-outlined text-primary fill-1">favorite</span>
                             <span class="font-bold text-slate-700">好感度: {{ love_points }}</span>
                         </div>
+                            <div class="grid grid-cols-2 gap-4 mb-3">
+                                <div class="bg-white/60 p-2 rounded shadow-inner flex items-center justify-center gap-2 border border-white/40">
+                                        <span class="material-symbols-outlined text-orange-400 text-sm">bolt</span>
+                                        <span class="text-xs font-bold text-slate-600">体力:</span>
+                                        <span class="text-sm font-black text-primary">{{ stamina }}</span>
+                        </div>
+                                    <div class="bg-white/60 p-2 rounded shadow-inner flex items-center justify-center gap-2 border border-white/40">
+                                        <span class="material-symbols-outlined text-yellow-500 text-sm">database</span>
+                                        <span class="text-xs font-bold text-slate-600">螃蟹币:</span>
+                                        <span class="text-sm font-black text-primary">{{ crab_coin }}</span>
+                                    </div>
+                                </div>
                         <div class="grid grid-cols-2 gap-4 mb-3">
                             <div class="bg-white/60 p-3 rounded shadow-inner flex flex-col items-center">
                                 <span class="text-slate-500 text-[10px] font-bold uppercase">总投喂次数</span>

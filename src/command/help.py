@@ -24,6 +24,7 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         {"command": "亚托莉打工", "description": "萝卜子打工赚钱！（消耗体力获取螃蟹币）"},
         {"command": "亚托莉骰子", "description": "摇骰子决定命运（加好感与体力）"},
         {"command": "商店", "description": "查看商店商品并购买（消耗螃蟹币）"},
+        {"command": "使用", "description": "使用背包中的物品"},
         {"command": "亚托莉我错了对不起", "description": "被拉黑道歉尝试恢复好感"},
     ]
 

@@ -21,43 +21,49 @@
 
 ```text
 astrbot_plugin_atrifeed/
-├── main.py                # 插件入口：注册指令、分发事件、初始化数据库及路径
+├── main.py                # 插件入口：注册指令、分发事件、初始化
 ├── keyword_trigger.py     # 核心路由：支持正则/模糊/精确匹配关键词的引擎
-├── metadata.yaml          # 插件元数据 (名称、作者、版本等)
+├── metadata.yaml          # 插件元数据
 ├── _conf_schema.json      # 配置项定义 (开关、触发模式等)
 ├── README.md              # 项目说明文档
 ├── CHANGELOG.md           # 版本更新日志
 ├── LICENSE                # 项目许可证
 ├── logo.png               # 插件图标
 ├── src/                   # 核心逻辑目录
-│   ├── __init__.py        # 模块初始化
-│   ├── constants.py       # 存放默认关键词映射 (_DEFAULT_KEYWORD_ROUTES)
-│   ├── database.py        # 数据库操作中心 (处理好感度、金币、签到、黑名单)
-│   ├── utils.py           # 工具类 (is_group_allowed 群聊过滤等)
-│   ├── ban.py             # 惩罚与道歉逻辑 (run_apology_logic)
-│   └── command/           # 业务指令实现目录
-│       ├── __init__.py    
+│   ├── __init__.py
+│   ├── constants.py       # 存放默认关键词映射与常量定义
+│   ├── utils.py           # 工具类 (群聊过滤、图片处理等)
+│   ├── ban.py             # 惩罚与道歉逻辑
+│   ├── db/                # 数据库操作中心
+│   │   ├── __init__.py
+│   │   ├── database.py    # 基础好感度、金币、黑名单管理
+│   │   └── database_shop.py # 商店库存、购买逻辑处理
+│   └── command/           # 业务指令实现
+│       ├── __init__.py
 │       ├── feeding.py     # 投喂逻辑 (螃蟹、水果等)
-│       ├── abuse.py       # 辱骂检测与黑名单处罚逻辑
+│       ├── abuse.py       # 辱骂检测与处罚
 │       ├── help.py        # 帮助菜单渲染
 │       ├── my_atri.py     # 羁绊/属性卡片渲染
-│       ├── radish.py      # 萝卜子/飞舞萝卜子互动
-│       ├── other_emoji.py # 针筒等表情互动
-│       ├── sign_in.py     # 签到逻辑
-│       ├── gig.py         # 打工逻辑
-│       └── dice.py        # 骰子/博弈逻辑
-├── pic/                   # 静态资源
-│   ├── demo/              # README 使用的示例图 (帮助、卡片演示)
-│   ├── emoji/             # 互动反馈表情包 (含子文件夹：angry, bad, radish 等)
-│   ├── lihui/             # 角色立绘库 (含 gig 打工专属立绘)
-│   ├── pictorial/         # 卡片背景素材
-│   └── sign_in/           # 签到功能专用配图
-├── template/              # HTML 渲染模板 (用于生成图片)
-│   ├── atri_help.html     
-│   ├── atri_sign_in.html  # 签到卡片模板
-│   ├── gig.html           # 打工结算模板
-│   └── my_atri1.html      # 羁绊卡片模板
-└── __pycache__/           # 自动生成的编译缓存
+│       ├── shopping.py    # 商店指令实现
+│       ├── backpack.py    # 背包查看功能
+│       ├── use_item.py    # 物品使用逻辑
+│       ├── sign_in.py     # 签到功能
+│       ├── gig.py         # 打工系统
+│       ├── dice.py        # 骰子博弈
+│       ├── radish.py      # 萝卜子互动
+│       └── other_emoji.py # 针筒等特殊表情互动
+├── pic/                   # 静态资源库
+│   ├── demo/              # README 展示用的演示图
+│   ├── emoji/             # 互动表情包 (含分目录：angry, bad, radish, rocket, scare 等)
+│   ├── lihui/             # 角色立绘库 (含 gig 专用及 shop 看板娘立绘)
+│   ├── pictorial/         # 卡片背景与素材
+│   └── sign_in/           # 签到功能配图
+└── template/              # HTML 渲染模板
+    ├── atri_help.html     # 帮助菜单模板
+    ├── atri_sign_in.html  # 签到卡片模板
+    ├── my_atri1.html      # 羁绊状态卡片模板
+    ├── gig.html           # 打工结算模板
+    └── shop.html          # 商店页面模板
 
 ```
 
@@ -67,11 +73,16 @@ astrbot_plugin_atrifeed/
 | --- | --- | --- |
 | `亚托莉帮助` | 用户 | 渲染并发送插件详细功能指南 |
 | `我的亚托莉` | 用户 | 查看羁绊值及个人统计卡片 |
-| `🦀` | 用户 | 投喂螃蟹 |
-| `🍓/🍉/🍎/🍜/🍧/🍔/🍕/🍱/🍄/🍭/🍙` | 用户 | 投喂加好感 |
-| `✨/🚬/💩/💉` | 用户 | 触发各种言语/反馈 |
+| `🦀` | 用户 | 投喂最爱的螃蟹 |
+| `🍓/🍉/🍎/🍜/🍧/🍔/🍕/🍱/🍄/🍭/🍙` | 用户 | 投喂各种食物以增加好感度 |
+| `✨/🚬/💩/💉/💤` | 用户 | 触发各种有趣的言语反馈 |
 | `萝卜子` | 用户 | 猜猜看会发生什么（笑） |
-| `亚托莉我错了对不起` | 用户 | 被拉黑后道歉尝试恢复好感 |
+| `亚托莉我错了对不起` | 用户 | 被拉黑后的诚恳道歉，尝试恢复好感 |
+| `亚托莉签到` | 用户 | 每日签到，获取螃蟹币与体力奖励 |
+| `亚托莉打工` | 用户 | 派遣机器人打工（消耗体力获取螃蟹币） |
+| `亚托莉骰子` | 用户 | 摇骰子决定命运（随机增加好感与体力） |
+| `商店` | 用户 | 查看今日上架商品并消耗螃蟹币购买 |
+| `使用 [物品名]` | 用户 | 使用背包中已拥有的物品 |
 | `/clear_feed_log` | 管理员 | 清空今日投喂记录 |
 
 
@@ -94,7 +105,7 @@ astrbot_plugin_atrifeed/
 | --- | --- | --- | --- |
 | `keyword_trigger_enabled` | bool | false | 是否启用关键词直接触发（无需前缀） |
 | `keyword_trigger_mode` | string | exact | 匹配模式：`exact`(精确) / `starts_with`(开头) / `contains`(包含) |
-| `global_ban_use_qq` | bool | true | 彻底激怒亚托莉后，是否通过框架全局封禁该 QQ（目前没用） |
+| `global_ban_use_qq` | bool | true | 当好感低于5后，是否通过框架全局封禁该 QQ |
 | `whitelist_groups` | list | [] | 白名单群号列表 |
 | `blacklist_groups` | list | [] | 黑名单群号列表 |
 

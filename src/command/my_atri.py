@@ -80,6 +80,10 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
     
     # 1. 获取数据库数据
     fav, is_blocked = db.get_user_state(uid, gid)
+
+    economy_data = db.get_user_economy(uid, gid)
+    curr_crab_coin = economy_data[0]
+    curr_stamina = economy_data[1]
     
     # 这里的 curr_dir 应该是插件的根目录 (AtriPlugin 类中定义的 self.curr_dir)
     # 构造 template 和 pic 的绝对路径
@@ -145,6 +149,8 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         "season_text": season_text,
         "meet_days": meet_days,
         "love_points": fav,
+        "stamina": curr_stamina,     
+        "crab_coin": curr_crab_coin,
         "random_quote": random.choice(quotes),
         "bg_img": get_base64_img("bg1.jpg"),
         "emoji_img": get_base64_img("emoji1.jpg"),
@@ -180,7 +186,7 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         # header(80) + quote(80) + stats(120) + food(200) + footer(50) 
         # 设为 650 比较稳妥
         render_width = 600
-        render_height = 587
+        render_height = 630
 
         url = await html_render_func(
             tmpl_content, 

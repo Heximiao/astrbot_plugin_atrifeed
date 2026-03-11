@@ -58,7 +58,7 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
 
             options = {
                 "type": "jpeg",
-                "quality": 85,
+                "quality": None,
                 "full_page": False, # 禁用自动高度，解决下移立绘带来的白边问题
                 "clip": {
                     "x": 0,
@@ -66,7 +66,8 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
                     "width": render_width,
                     "height": render_height
                 },
-                "scale": "device"
+                "scale": "device",
+                "device_scale_factor_level": "ultra"
             }
 
             image_url = await html_render(tmpl_html, render_data, options=options)

@@ -52,23 +52,29 @@ class AtriShopDB(AtriDB):
         """初始化预设商品数据"""
         # 格式: (名称, 图标, 类型, 价格, 效果值, 描述)
         initial_items = [
-            ("蛋包饭", "🍳", "food", 50, 20, "热腾腾的蛋包饭，亚托莉的最爱之一。"),
-            ("飞机票", "✈️", "tool", 1000, 0, "或许可以去更远的地方进行圣地巡礼？"),
-            ("新鞋子", "👟", "apparel", 300, 5, "换上新鞋子，心情也会变好。"),
-            ("新衣服", "👗", "apparel", 500, 10, "给亚托莉买的新衣服。"),
-            ("菠萝", "🍍", "food", 30, 10, "新鲜的菠萝，酸甜可口。"),
-            ("烟花", "🎆", "tool", 200, 15, "在夜晚绽放的美丽，能大幅提升好感。"),
-            ("奶茶", "🧋", "food", 25, 8, "现代人的续命水，机器少女也能喝吗？")
+            ("蛋包饭", "🍳", "food", 50, 13, "热腾腾的蛋包饭，可以增加体力值"),
+            ("机票", "✈️", "tool", 600, 0, "或许可以去更远的地方进行圣地巡礼？（开启剧情的关键道具）"),
+            ("新鞋子", "👟", "apparel", 150, 13, "换上新鞋子，增加好感度"),
+            ("新衣服", "👗", "apparel", 200, 15, "给亚托莉买的新衣服,增加好感度"),
+            ("菠萝", "🍍", "food", 30, 5, "新鲜的菠萝，可以增加体力值。"),
+            ("烟花", "🎆", "tool", 200, 25, "在夜晚绽放的美丽，能大幅提升好感。"),
+            ("奶茶", "🧋", "food", 25, 4, "现代人的续命水，增加体力值")
         ]
         
         with self._get_conn() as conn:
             cursor = conn.cursor()
             for item in initial_items:
-                # 使用 INSERT OR IGNORE 避免重复插入
+                # 使用 ON CONFLICT 进行更新 (UPSERT)
                 cursor.execute('''
-                    INSERT OR IGNORE INTO shop_items 
+                    INSERT INTO shop_items 
                     (item_name, item_icon, item_type, price, effect_value, description)
                     VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(item_name) DO UPDATE SET
+                        item_icon = excluded.item_icon,
+                        item_type = excluded.item_type,
+                        price = excluded.price,
+                        effect_value = excluded.effect_value,
+                        description = excluded.description
                 ''', item)
             conn.commit()
 

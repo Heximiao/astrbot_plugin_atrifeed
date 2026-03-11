@@ -253,7 +253,8 @@ class AtriPlugin(Star):
         if not is_group_allowed(event, conf): return
         if self.is_blocked(event): return
         
-        async for result in run_shop_logic(event, self.db):
+        # 核心修改：增加 self.curr_dir 和 self.html_render 两个参数
+        async for result in run_shop_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
 
     # --- 特殊逻辑 ---

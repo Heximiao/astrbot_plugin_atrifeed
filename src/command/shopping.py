@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from astrbot.api.event import AstrMessageEvent
+from astrbot.api import logger # 别忘了导入 logger
 
 async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
     user_id = event.get_sender_id()
@@ -42,19 +43,44 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
 
         # 读取模板
         template_path = os.path.join(curr_dir, "template", "shop.html")
+        if not os.path.exists(template_path):
+            yield event.plain_result(f"错误：找不到模板文件 {template_path}")
+            return
+
         with open(template_path, "r", encoding="utf-8") as f:
             tmpl_html = f.read()
 
-        # 渲染图片
-        options = {"type": "jpeg", "quality": 80, "viewport": {"width": 1920, "height": 1080}}
-        image_url = await html_render(tmpl_html, render_data, options=options)
+        # --- 关键修改：手动精准裁切 ---
+        try:
+            # 根据背景图 shop1.jpeg 的实际尺寸设定
+            render_width = 1920
+            render_height = 1080
+
+            options = {
+                "type": "jpeg",
+                "quality": 85,
+                "full_page": True, # 禁用自动高度，解决下移立绘带来的白边问题
+                "clip": {
+                    "x": 0,
+                    "y": 0,
+                    "width": render_width,
+                    "height": render_height
+                },
+                "scale": "device"
+            }
+
+            image_url = await html_render(tmpl_html, render_data, options=options)
+            yield event.image_result(image_url)
+            
+        except Exception as e:
+            logger.error(f"商店页面渲染失败: {e}")
+            yield event.plain_result("哎呀，商店看板娘不小心摔倒了，图片没画出来...")
         
-        yield event.image_result(image_url)
         random.seed() # 重置种子
         return
 
     # --- 3. 处理“购买商品” ---
-    random.seed() # 购买逻辑不需要固定种子
+    random.seed() 
     if item_to_buy not in daily_item_names:
         yield event.plain_result(f"唔... 今天的货架上似乎没有 {item_to_buy} 呢。")
         return

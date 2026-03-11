@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            width: 1920px; height: 1080px;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        .container {
+            position: relative;
+            width: 1920px; height: 1080px;
+            background: url('{{ bg_path }}') no-repeat center center;
+            background-size: cover;
+        }
+        /* 左侧立绘容器 */
+        .lihui {
+            position: absolute;
+            left: 50px; bottom: 0;
+            width: 500px; /* 缩放显示，原图比例保持 */
+            bottom: -100px;
+            height: auto;
+            z-index: 10;
+        }
+        /* 右侧商品容器 (对应你图片中的白色区域) */
+        .shop-content {
+            position: absolute;
+            top: 290px;   /* 这里的坐标需要根据你 shop1.jpeg 的白色框位置微调 */
+            left: 930px;  /* 同上 */
+            width: 530px; /* 同上 */
+            height: 650px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .item-row {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            border: 2px solid #e0c090;
+        }
+        .item-info {
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+        .item-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #5d4037;
+        }
+        .item-price {
+            color: #d32f2f;
+            font-size: 22px;
+            margin-left: 10px;
+        }
+        .item-desc {
+            font-size: 18px;
+            color: #795548;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if lihui_path %}
+        <img src="{{ lihui_path }}" class="lihui">
+        {% endif %}
+
+        <div class="shop-content">
+            <h2 style="text-align: center; color: #5d4037; margin-bottom: 10px;">今日上架商品 ({{ date }})</h2>
+            {% for item in items %}
+            <div class="item-row">
+                <span style="font-size: 40px;">{{ item.item_icon }}</span>
+                <div class="item-info">
+                    <div>
+                        <span class="item-name">{{ item.item_name }}</span>
+                        <span class="item-price">💰{{ item.price }} 螃蟹币</span>
+                    </div>
+                    <div class="item-desc">{{ item.description }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            <p style="text-align: center; font-size: 16px; color: #999;">输入 [/商店 物品名] 购买</p>
+        </div>
+    </div>
+</body>
+</html>

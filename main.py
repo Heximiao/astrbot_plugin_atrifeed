@@ -314,9 +314,11 @@ class AtriPlugin(Star):
         if not is_group_allowed(event, conf): return
         if self.is_blocked(event): return
 
-        # 提取参数：/选择 1 -> selection = "1"
-        parts = event.message_str.split()
-        selection = parts[1] if len(parts) > 1 else None
+        import re
+        match = re.search(r'\d+', event.message_str)
+        selection = match.group() if match else None
+        
+        logger.info(f"【Debug】提取到的纯数字选项: '{selection}'")
         
         async for result in self._call_story_logic(event, action="select", selection=selection):
             yield result

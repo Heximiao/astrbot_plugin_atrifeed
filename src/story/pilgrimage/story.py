@@ -95,17 +95,23 @@ class StoryManager:
             return await self._render(event, new_node, note=note)
 
     async def _render(self, event, node_data, note=""):
+        """构建富媒体消息链：文字在前，图片在后"""
         text = node_data.get('text', '')
         image_url = node_data.get('image_url', '')
         chain = []
-        if image_url: chain.append(Comp.Image.fromURL(image_url))
         
+        # 1. 先构建并添加文字正文（包括 note 和 choices）
         display_text = f"{note}{text}"
         if "choices" in node_data:
             choice_text = "\n".join([f"【{i+1}】{c['text']}" for i, c in enumerate(node_data['choices'])])
             display_text += f"\n\n{choice_text}\n\n(回复：/选择 数字)"
-            
+        
         chain.append(Comp.Plain(display_text))
+            
+        # 2. 后添加插图（图片会显示在文字下方）
+        if image_url: 
+            chain.append(Comp.Image.fromURL(image_url))
+        
         return event.chain_result(chain)
 
     async def start_story(self, event, db):

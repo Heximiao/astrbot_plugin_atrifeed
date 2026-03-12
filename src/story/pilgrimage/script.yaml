@@ -1,6 +1,6 @@
 nodes:
   part1:
-    text: "出发！"
+    text: "出发！目的地————銚子市！"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
     next: "part2" # 普通节点，直接继续
   

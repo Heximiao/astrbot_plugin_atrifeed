@@ -12,6 +12,7 @@ from .keyword_trigger import KeywordRouter, MatchMode
 from .src.constants import _DEFAULT_KEYWORD_ROUTES
 from .src.db.database import AtriDB
 from .src.db.database_shop import AtriShopDB
+from .src.db.database_story import AtriStoryDB
 from .src.command.feeding import *
 from .src.utils.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic
@@ -26,6 +27,8 @@ from .src.command.dice import run_dice_logic
 from .src.command.shopping import run_shop_logic
 from .src.command.backpack import run_backpack_logic
 from .src.command.use_item import run_use_item_logic
+
+from .src.story.pilgrimage.story import StoryManager
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
@@ -49,10 +52,12 @@ class AtriPlugin(Star):
             
             # 传入数据库
             #self.db = AtriDB(db_file)
-            self.db = AtriShopDB(db_file)
+            #self.db = AtriShopDB(db_file)
+            self.db = AtriStoryDB(db_file)
 
             self.apology_count = {}
             self._keyword_router = KeywordRouter(routes=_DEFAULT_KEYWORD_ROUTES)
+            self.story_mgr = StoryManager(self.curr_dir, self.html_render)
             
             self._keyword_handlers = {
                 "feed_crab": self.feed_crab,
@@ -68,6 +73,9 @@ class AtriPlugin(Star):
                 "atri_work": self.atri_work,
                 "atri_dice": self.atri_dice,
                 "sleep_effect": self.sleep_cmd,
+                "atri_shop": self.atri_shop,
+                "atri_backpack": self.atri_backpack,
+                "atri_use": self.atri_use,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 
@@ -248,7 +256,7 @@ class AtriPlugin(Star):
         async for result in run_sleep_logic(event, self.curr_dir):
             yield result
 
-    @filter.command("商店")
+    @filter.command("商店", alias={"购买"})
     async def atri_shop(self, event: AstrMessageEvent):
         """亚托莉小卖部：查看或购买物品"""
         conf = self.config if self.config else (self.context.get_config() or {})
@@ -279,6 +287,38 @@ class AtriPlugin(Star):
         async for result in run_use_item_logic(event, self.db):
             yield result
 
+# 剧情相关指令
+    @filter.command("继续前进")
+    async def story_next(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        
+        # 使用 yield 发送管理器返回的 MessageChain
+        async for result in self._call_story_logic(event, action="next"):
+            yield result
+
+    @filter.command("选择")
+    async def story_select(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+
+        # 提取参数：/选择 1 -> selection = "1"
+        parts = event.message_str.split()
+        selection = parts[1] if len(parts) > 1 else None
+        
+        async for result in self._call_story_logic(event, action="select", selection=selection):
+            yield result
+
+    async def _call_story_logic(self, event, action, selection=None):
+        """统一封装逻辑调用层"""
+        result = await self.story_mgr.run_logic(event, self.db, action, selection)
+        if isinstance(result, str):
+            yield event.plain_result(result)
+        else:
+            yield result
+
     # --- 特殊逻辑 ---
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -286,6 +326,7 @@ class AtriPlugin(Star):
         """专门处理 @机器人 时的辱骂检测"""
         conf = self.config if self.config else (self.context.get_config() or {})
         if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
         
         # 1. 使用 is_at_me 属性判断是否被 @
         # 也可以结合 message_obj 检查是否有 At 组件

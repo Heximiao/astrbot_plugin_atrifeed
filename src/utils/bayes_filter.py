@@ -1,116 +1,186 @@
 import math
 import os
 import jieba
+import re
+from collections import defaultdict
 
 class AtriBayesFilter:
+
+    PERSON_WORDS = ["你", "你们", "他", "她", "你妈", "他妈"]
+    SAFE_PHRASES = ["垃圾文件", "垃圾分类", "垃圾桶"]
+
     def __init__(self, data_dir: str):
-        self.normal_words = {}
-        self.abuse_words = {}
+        self.normal_words = defaultdict(int)
+        self.abuse_words = defaultdict(int)
+
         self.total_normal = 0
         self.total_abuse = 0
+
         self.vocab = set()
+
+        self.raw_normal_lines = set()
+        self.raw_abuse_lines = set()
+
         self.load_data(data_dir)
 
     def load_data(self, data_dir):
-        """加载语料并统计词频"""
+
         normal_path = os.path.join(data_dir, "normal.txt")
         abuse_path = os.path.join(data_dir, "abuse.txt")
 
         if not os.path.exists(normal_path) or not os.path.exists(abuse_path):
-            # 如果文件不存在，默认给一点基础数据防止报错
-            self.total_normal, self.total_abuse = 1, 1
+            self.total_normal = 1
+            self.total_abuse = 1
             return
 
         with open(normal_path, 'r', encoding='utf-8') as f:
             for line in f:
+
+                line = line.strip().lower()
+                if not line:
+                    continue
+
+                self.raw_normal_lines.add(line)
+
                 self.total_normal += 1
-                words = jieba.lcut(line.strip().lower())
+                words = jieba.lcut(line)
+
                 for w in words:
-                    self.normal_words[w] = self.normal_words.get(w, 0) + 1
+                    self.normal_words[w] += 1
                     self.vocab.add(w)
+
+                for bg in self._bigrams(words):
+                    self.normal_words[bg] += 1
+                    self.vocab.add(bg)
 
         with open(abuse_path, 'r', encoding='utf-8') as f:
             for line in f:
+
+                line = line.strip().lower()
+                if not line:
+                    continue
+
+                self.raw_abuse_lines.add(line)
+
                 self.total_abuse += 1
-                words = jieba.lcut(line.strip().lower())
+                words = jieba.lcut(line)
+
                 for w in words:
-                    self.abuse_words[w] = self.abuse_words.get(w, 0) + 1
+                    self.abuse_words[w] += 1
                     self.vocab.add(w)
 
-    def is_abuse(self, text: str, threshold: float = 0.7) -> bool:
-        """判断是否为辱骂。threshold 越高越不容易误判"""
-        words = jieba.lcut(text.lower())
+                for bg in self._bigrams(words):
+                    self.abuse_words[bg] += 1
+                    self.vocab.add(bg)
 
-        target_text = text.strip().lower()
-        
-        # 如果这个句子在辱骂库里原封不动出现过，直接返回 True (相当于概率 1.0)
-        # 注意：这里需要我们在 load_data 时顺便存一份原始句子列表
-        if target_text in self.raw_abuse_lines:
-            return True
-        
-        # P(Abuse|Text) 
-        log_p_normal = math.log(self.total_normal / (self.total_normal + self.total_abuse))
-        log_p_abuse = math.log(self.total_abuse / (self.total_normal + self.total_abuse))
+    def _bigrams(self, words):
 
-        for w in words:
-            # 拉普拉斯平滑
-            p_w_normal = (self.normal_words.get(w, 0) + 1) / (len(self.vocab) + sum(self.normal_words.values()))
-            p_w_abuse = (self.abuse_words.get(w, 0) + 1) / (len(self.vocab) + sum(self.abuse_words.values()))
-            
-            log_p_normal += math.log(p_w_normal)
-            log_p_abuse += math.log(p_w_abuse)
+        for i in range(len(words) - 1):
+            yield words[i] + "_" + words[i + 1]
 
-        # 转化为概率（简化处理）
-        try:
-            prob_abuse = 1 / (1 + math.exp(min(700, max(-700, log_p_normal - log_p_abuse))))
-        except:
-            prob_abuse = 0.5
-        return prob_abuse > threshold
-    
-    def get_debug_info(self, text: str):
-        """详细拆解计算过程"""
-        words = jieba.lcut(text.lower())
-        
-        # 基础得分（先验概率）
-        total_samples = max(1, self.total_normal + self.total_abuse)
-        base_normal_score = math.log(max(1, self.total_normal) / total_samples)
-        base_abuse_score = math.log(max(1, self.total_abuse) / total_samples)
-        
-        word_details = []
-        log_p_normal = base_normal_score
-        log_p_abuse = base_abuse_score
+    def _tfidf_weight(self, word, words):
 
-        # 保底分母
-        denom_normal = max(1, len(self.vocab) + sum(self.normal_words.values()))
-        denom_abuse = max(1, len(self.vocab) + sum(self.abuse_words.values()))
+        tf = words.count(word) / len(words)
 
-        for w in words:
-            # 计算单个词的概率
+        df = self.normal_words.get(word, 0) + self.abuse_words.get(word, 0)
+        idf = math.log((self.total_normal + self.total_abuse + 1) / (1 + df))
+
+        return tf * idf
+
+    def _calc_log_prob(self, words):
+
+        log_p_normal = math.log(
+            self.total_normal / (self.total_normal + self.total_abuse)
+        )
+
+        log_p_abuse = math.log(
+            self.total_abuse / (self.total_normal + self.total_abuse)
+        )
+
+        denom_normal = len(self.vocab) + sum(self.normal_words.values())
+        denom_abuse = len(self.vocab) + sum(self.abuse_words.values())
+
+        features = words + list(self._bigrams(words))
+
+        for w in features:
+
             p_w_normal = (self.normal_words.get(w, 0) + 1) / denom_normal
             p_w_abuse = (self.abuse_words.get(w, 0) + 1) / denom_abuse
-            
-            # 词分值贡献（分值越高代表越倾向于那一类）
-            w_normal_log = math.log(p_w_normal)
-            w_abuse_log = math.log(p_w_abuse)
-            
-            log_p_normal += w_normal_log
-            log_p_abuse += w_abuse_log
-            
-            word_details.append({
-                "词": w,
-                "正常分贡献": f"{w_normal_log:.2f}",
-                "辱骂分贡献": f"{w_abuse_log:.2f}",
-                "倾向": "🔴辱骂" if w_abuse_log > w_normal_log else "🟢正常"
-            })
 
-        # 最终概率转换
+            weight = self._tfidf_weight(w, words) if "_" not in w else 1.2
+
+            log_p_normal += weight * math.log(p_w_normal)
+            log_p_abuse += weight * math.log(p_w_abuse)
+
+        if words:
+            log_p_normal /= len(words)
+            log_p_abuse /= len(words)
+
+        if any(p in words for p in self.PERSON_WORDS):
+            log_p_abuse += 0.6
+
+        return log_p_normal, log_p_abuse
+
+    def _prob_from_logs(self, log_normal, log_abuse):
+
         try:
-            prob_abuse = 1 / (1 + math.exp(min(700, max(-700, log_p_normal - log_p_abuse))))
+            return 1 / (1 + math.exp(
+                min(700, max(-700, log_normal - log_abuse))
+            ))
         except:
-            prob_abuse = 0.5
-            
+            return 0.5
+
+    def _clean_text(self, text):
+
+        text = text.lower()
+        text = re.sub(r"[^\w\u4e00-\u9fff]", "", text)
+        return text
+
+    def is_abuse(self, text: str, threshold: float = 0.75) -> bool:
+
+        text = self._clean_text(text)
+
+        if not text:
+            return False
+
+        for safe in self.SAFE_PHRASES:
+            if safe in text:
+                return False
+
+        if text in self.raw_abuse_lines:
+            return True
+
+        words = jieba.lcut(text)
+
+        if not words:
+            return False
+
+        window_size = min(6, len(words))
+        max_prob = 0
+
+        for i in range(len(words) - window_size + 1):
+
+            window = words[i:i + window_size]
+
+            log_n, log_a = self._calc_log_prob(window)
+            prob = self._prob_from_logs(log_n, log_a)
+
+            max_prob = max(max_prob, prob)
+
+        return max_prob > threshold
+
+    def get_debug_info(self, text: str):
+
+        text = self._clean_text(text)
+        words = jieba.lcut(text)
+
+        log_n, log_a = self._calc_log_prob(words)
+        prob = self._prob_from_logs(log_n, log_a)
+
         return {
-            "words": word_details,
-            "total_prob": prob_abuse,
-            "final_decision": "辱骂" if prob_abuse > 0.7 else "正常"
+            "words": words,
+            "log_normal": log_n,
+            "log_abuse": log_a,
+            "total_prob": prob,
+            "decision": "辱骂" if prob > 0.75 else "正常"
         }

@@ -44,10 +44,11 @@ async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
         report = [f"📊 【调试报告】文本：{clean_msg}"]
         report.append(f"📈 总辱骂概率: {debug['total_prob']:.4f}")
         report.append("-" * 20)
-        for w in debug['words']:
-            report.append(f"词: [{w['词']}] | {w['倾向']} (辱骂{w['辱骂分贡献']} vs 正常{w['正常分贡献']})")
+        report.append(f"🧩 分词: {' | '.join(debug['words'])}")
+        report.append(f"📉 log_normal: {debug['log_normal']:.3f}")
+        report.append(f"📈 log_abuse: {debug['log_abuse']:.3f}")
         report.append("-" * 20)
-        report.append(f"判定结果: {debug['final_decision']}")
+        report.append(f"判定结果: {debug['decision']}")
 
         # 直接发给用户看
         yield event.plain_result("\n".join(report))
@@ -58,7 +59,7 @@ async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
         is_violation = True
     else:
         # 2. 容易误触的词（垃圾、死、蠢等），交给贝叶斯
-        is_violation = filter_instance.is_abuse(clean_msg, threshold=0.73)
+        is_violation = filter_instance.is_abuse(clean_msg, threshold=0.75)
 
     if not is_violation:
         return

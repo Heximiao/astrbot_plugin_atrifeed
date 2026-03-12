@@ -57,7 +57,7 @@ class AtriPlugin(Star):
 
             self.apology_count = {}
             self._keyword_router = KeywordRouter(routes=_DEFAULT_KEYWORD_ROUTES)
-            self.story_mgr = StoryManager(self.curr_dir, self.html_render)
+            self.story_mgr = StoryManager(self.curr_dir)
             
             self._keyword_handlers = {
                 "feed_crab": self.feed_crab,

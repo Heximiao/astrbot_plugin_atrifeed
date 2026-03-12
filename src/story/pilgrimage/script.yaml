@@ -1,12 +1,12 @@
 nodes:
   part1:
-    text: "你来到了鸣无神岛的渡轮口，海风带着淡淡的咸味。这就是《Summer Pockets》的世界吗？"
-    image_url: "https://your-image-host.com/port.jpg"
+    text: "出发！"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
     next: "part2" # 普通节点，直接继续
   
   part2:
     text: "在路边你看到了一个自动贩卖机，上面贴着奇怪的贴纸。你要走近看看吗？"
-    image_url: "https://your-image-host.com/vending.jpg"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
     # 这里不写 next，强制走 choices
     choices:
       - text: "去看看（消耗10体力）"
@@ -17,7 +17,7 @@ nodes:
 
   branch_search:
     text: "你在贩卖机下面捡到了一个生锈的罐头！里面竟然有一枚螃蟹币。"
-    image_url: "https://your-image-host.com/item_found.jpg"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
     reward: {"crab_coin": 1} # 自动增加螃蟹币
     next: "part3"
 

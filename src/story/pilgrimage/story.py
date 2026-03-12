@@ -4,10 +4,12 @@ from astrbot.api import logger
 import astrbot.api.message_components as Comp
 
 class StoryManager:
-    def __init__(self, curr_dir):
+    def __init__(self, curr_dir): 
+        self.curr_dir = curr_dir
+        #self.html_render = html_render
         self.script_path = os.path.join(curr_dir, "src", "story", "pilgrimage", "script.yaml")
         self.story_data = self._load_script()
-
+    
     def _load_script(self):
         with open(self.script_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)

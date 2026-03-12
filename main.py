@@ -288,6 +288,16 @@ class AtriPlugin(Star):
             yield result
 
 # 剧情相关指令
+    @filter.command("开始巡礼")
+    async def story_start(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+
+        result = await self.story_mgr.start_story(event, self.db)
+        if result:
+            yield result
+    
     @filter.command("继续前进")
     async def story_next(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})

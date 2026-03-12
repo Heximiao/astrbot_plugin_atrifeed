@@ -29,5 +29,11 @@
         "description": "启用 QQ 级彻底封禁",
         "hint": "开启后，达到原谅上限（也就是被原谅一次后再次触发拉黑）的用户会被 AstrBot 框架拉黑，彻底无法触发机器人的任何功能。关闭则在被拉黑时仅无法使用此插件。",
         "default": true
+    },
+        "bayes_abuse_detection": {
+        "type": "bool",
+        "description": "启用贝叶斯辱骂检测",
+        "hint": "关闭后只检测严重关键词，不再使用贝叶斯模型判断。如果你要经常和bot聊天斗嘴，建议关闭以避免误伤。",
+        "default": true
     }
 }

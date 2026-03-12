@@ -297,7 +297,7 @@ class AtriPlugin(Star):
             if self.is_blocked(event): return
             
             # 3. 调用逻辑层
-            async for result in run_abuse_logic(event, self.db, self.curr_dir):
+            async for result in run_abuse_logic(event, self.db, self.curr_dir, self.config):
                 yield result
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1)

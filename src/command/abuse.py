@@ -6,7 +6,7 @@ from ..utils.bayes_filter import AtriBayesFilter
 
 import os
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # 获取当前文件 (abuse.py) 的路径 -> src/command/
 current_dir = os.path.dirname(__file__)
@@ -29,9 +29,10 @@ def check_abuse(text: str) -> bool:
     clean_text = re.sub(r"[\s\.\-\_\~\*\#]", "", text.lower())
     return any(word in clean_text for word in BAD_WORDS)
 
-async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
+async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str, config: dict):
     # 提取纯文本
     clean_msg = event.message_str.strip()
+    bayes_enabled = config.get("bayes_abuse_detection", True)
 
     if len(clean_msg) > 100:
         return
@@ -57,9 +58,14 @@ async def run_abuse_logic(event: AstrMessageEvent, db, curr_dir: str):
     HARD_WORDS = ["傻逼", "你妈死了", "去死", "操你妈", "煞笔", "智障"] 
     if any(w in clean_msg.lower() for w in HARD_WORDS):
         is_violation = True
-    else:
-        # 2. 容易误触的词（垃圾、死、蠢等），交给贝叶斯
+
+    elif bayes_enabled:
+        # 启用贝叶斯检测
         is_violation = filter_instance.is_abuse(clean_msg, threshold=0.75)
+
+    else:
+        # 关闭贝叶斯，只检测硬关键词
+        is_violation = False
 
     if not is_violation:
         return

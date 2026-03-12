@@ -13,7 +13,7 @@ from .src.constants import _DEFAULT_KEYWORD_ROUTES
 from .src.db.database import AtriDB
 from .src.db.database_shop import AtriShopDB
 from .src.command.feeding import *
-from .src.utils import is_group_allowed
+from .src.utils.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic
 from .src.command.abuse import run_abuse_logic
 from .src.command.my_atri import run_my_atri_logic
@@ -297,7 +297,7 @@ class AtriPlugin(Star):
             if self.is_blocked(event): return
             
             # 3. 调用逻辑层
-            async for result in run_abuse_logic(event, self.db, self.curr_dir):
+            async for result in run_abuse_logic(event, self.db, self.curr_dir, self.config):
                 yield result
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1)

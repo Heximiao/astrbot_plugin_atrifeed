@@ -28,7 +28,7 @@ from .src.command.shopping import run_shop_logic
 from .src.command.backpack import run_backpack_logic
 from .src.command.use_item import run_use_item_logic
 
-from .src.story.pilgrimage.story import StoryManager
+from .src.story.story import StoryManager
 
 class AtriPlugin(Star):
     def __init__(self, context: Context, config: dict = None):

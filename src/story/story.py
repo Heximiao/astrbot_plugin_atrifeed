@@ -96,36 +96,43 @@ class StoryManager:
             return await self._render(event, new_node, note=note, title=new_node.get('title'))
 
     async def start_story(self, event, db, story_id="main_pilgrimage"):
-        """修正后的启动逻辑：完全从 YAML 中读取配置"""
         user_id = event.get_sender_id()
         group_id = event.get_group_id()
         
         story_data = self.stories.get(story_id)
         if not story_data:
-            return event.plain_result(f"❌ 剧本 {story_id} 不存在。")
+            return event.plain_result(f"❌ 剧本 {story_id} 未加载。")
 
-        # 好感度检查
-        fav, _ = db.get_user_state(user_id, group_id)
-        if fav < 200:
-            return event.plain_result(f"❤️ 好感度不足({fav}/200)。亚托莉还没准备好和你一起巡礼哦。")
+        # 1. 检查是否已经开启过（通过数据库进度是否存在来判断）
+        progress = db.get_story_progress(user_id, group_id, story_id)
+        
+        if progress:
+            # 【逻辑 A】已开启过：跳过好感度和机票鉴权，直接初始化/重置进度
+            note = "🔄 已检测到您的巡礼记录，正在为您重置到起始点...\n\n"
+        else:
+            # 【逻辑 B】第一次开启：进行严格鉴权
+            # 好感度检查
+            fav, _ = db.get_user_state(user_id, group_id)
+            if fav < 200:
+                return event.plain_result(f"❤️ 好感度不足({fav}/200)。亚托莉还没准备好和你一起巡礼哦。")
 
-        # 道具检查
-        ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
-        if ticket_count <= 0:
-            return event.plain_result("🎒 你的背包里还没有机票哦！")
+            # 机票检查
+            ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
+            if ticket_count <= 0:
+                return event.plain_result("🎒 你的背包里还没有机票哦！")
+            
+            # 扣票（仅在第一次开启时扣除）
+            db.consume_item(user_id, group_id, "机票")
+            note = "✈️ 验证通过，机票已使用！\n\n"
 
-        # 核心：获取起始节点 ID (YAML中定义 start_node，否则默认取 nodes 的第一个 key)
-        start_node_id = story_data.get('start_node')
-        if not start_node_id:
-            start_node_id = list(story_data['nodes'].keys())[0]
-
+        # 2. 统一执行初始化逻辑（无论是新开还是重置）
+        start_node_id = story_data.get('start_node') or list(story_data['nodes'].keys())[0]
         node = story_data['nodes'].get(start_node_id)
         
-        # 初始化进度
-        db.consume_item(user_id, group_id, "机票")
+        # 更新数据库：重置到起始节点，清空已解锁节点（或保留，看你需求）
         db.update_story_progress(user_id, group_id, story_id, start_node_id, start_node_id)
 
-        return await self._render(event, node, note="✈️ 剧情开启成功！\n\n", title=node.get('title'))
+        return await self._render(event, node, note=note, title=node.get('title'))
 
     async def _render(self, event, node_data, note="", title=""):
         """统一渲染逻辑"""

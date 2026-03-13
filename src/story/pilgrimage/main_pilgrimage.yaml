@@ -1,27 +1,43 @@
+# 剧本元数据
+story_id: "main_pilgrimage"
+story_name: "銚子市巡礼"
+start_node: "part1"
+
+# 剧情节点
 nodes:
   part1:
+    title: "旅途开始"
     text: "出发！目的地————銚子市！"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
-    next: "part2" # 普通节点，直接继续
+    next: "part2"
   
   part2:
+    title: "路边的插曲"
     text: "在路边你看到了一个自动贩卖机，上面贴着奇怪的贴纸。你要走近看看吗？"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
-    # 这里不写 next，强制走 choices
     choices:
-      - text: "去看看（消耗10体力）"
+      - text: "去看看（消耗 10 体力）"
         next: "branch_search"
-        cost: {"stamina": 10}
+        cost: 
+          stamina: 10
       - text: "直接去灯塔"
         next: "part3"
 
   branch_search:
+    title: "意外收获"
     text: "你在贩卖机下面捡到了一个生锈的罐头！里面竟然有一枚螃蟹币。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
-    reward: {"crab_coin": 1} # 自动增加螃蟹币
+    reward: 
+      crab_coin: 1
     next: "part3"
 
   part3:
+    title: "远方灯塔"
     text: "远处的灯塔在夕阳下显得格外安静..."
-    image_url: "https://your-image-host.com/lighthouse.jpg"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part3_1.jpg"
     next: "part4"
+
+  part4:
+    title: "未完待续"
+    text: "本章节的故事暂告一段落，亚托莉露出了开心的笑容。"
+    # 不写 next 也不写 choices，代码会触发“本章节已完结！”

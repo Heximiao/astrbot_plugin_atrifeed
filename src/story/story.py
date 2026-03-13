@@ -103,34 +103,44 @@ class StoryManager:
         if not story_data:
             return event.plain_result(f"❌ 剧本 {story_id} 未加载。")
 
-        # 1. 检查是否已经开启过（通过数据库进度是否存在来判断）
         progress = db.get_story_progress(user_id, group_id, story_id)
         
+        # 预设解锁列表
+        unlocked_nodes_str = ""
+
         if progress:
-            # 【逻辑 A】已开启过：跳过好感度和机票鉴权，直接初始化/重置进度
-            note = "🔄 已检测到您的巡礼记录，正在为您重置到起始点...\n\n"
+            # 【逻辑 A】老玩家：继承已解锁的所有节点
+            note = "🔄 已检测到巡礼记录，正在重置到起始点（已解锁进度已保留）...\n\n"
+            unlocked_nodes_str = progress.get('unlocked_nodes') or ""
         else:
-            # 【逻辑 B】第一次开启：进行严格鉴权
-            # 好感度检查
+            # 【逻辑 B】新玩家：鉴权 & 扣票
             fav, _ = db.get_user_state(user_id, group_id)
             if fav < 200:
-                return event.plain_result(f"❤️ 好感度不足({fav}/200)。亚托莉还没准备好和你一起巡礼哦。")
+                return event.plain_result(f"❤️ 好感度不足({fav}/200)。")
 
-            # 机票检查
             ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
             if ticket_count <= 0:
                 return event.plain_result("🎒 你的背包里还没有机票哦！")
             
-            # 扣票（仅在第一次开启时扣除）
             db.consume_item(user_id, group_id, "机票")
             note = "✈️ 验证通过，机票已使用！\n\n"
+            # 新玩家的解锁列表初始只有起始节点
+            # 注意：这里后面会统一处理起始节点的添加
 
-        # 2. 统一执行初始化逻辑（无论是新开还是重置）
+        # 2. 确定起始节点
         start_node_id = story_data.get('start_node') or list(story_data['nodes'].keys())[0]
         node = story_data['nodes'].get(start_node_id)
         
-        # 更新数据库：重置到起始节点，清空已解锁节点（或保留，看你需求）
-        db.update_story_progress(user_id, group_id, story_id, start_node_id, start_node_id)
+        # 3. 维护 unlocked_nodes 列表
+        # 将 start_node_id 加入解锁列表（如果原先字符串里没有的话）
+        unlocked_list = unlocked_nodes_str.split(',') if unlocked_nodes_str else []
+        if start_node_id not in unlocked_list:
+            unlocked_list.append(start_node_id)
+        
+        final_unlocked_str = ",".join(unlocked_list)
+
+        # 4. 更新数据库：重置当前位置到起点，但保留/更新解锁列表
+        db.update_story_progress(user_id, group_id, story_id, start_node_id, final_unlocked_str)
 
         return await self._render(event, node, note=note, title=node.get('title'))
 

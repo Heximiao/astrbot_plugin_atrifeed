@@ -1,39 +1,26 @@
 # 剧本元数据
 story_id: "main_pilgrimage"
-story_name: "銚子市巡礼"
+story_name: "ATRI取景地——铫子市巡礼"
 start_node: "part1"
 
 # 剧情节点
 nodes:
   part1:
-    title: "旅途开始"
-    text: "出发！目的地————銚子市！"
+    title: "圣地巡礼伊始"
+    text: "出发！前往ATRI的取景地，目的地————铫子市！"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
     next: "part2"
   
-  part2:
-    title: "路边的插曲"
-    text: "在路边你看到了一个自动贩卖机，上面贴着奇怪的贴纸。你要走近看看吗？"
-    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
-    choices:
-      - text: "去看看（消耗 10 体力）"
-        next: "branch_search"
-        cost: 
-          stamina: 10
-      - text: "直接去灯塔"
-        next: "part3"
 
-  branch_search:
-    title: "意外收获"
-    text: "你在贩卖机下面捡到了一个生锈的罐头！里面竟然有一枚螃蟹币。"
-    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
-    reward: 
-      crab_coin: 1
+  part2:
+    title: "路途之上"
+    text: "跨过东京的喧嚣，午后的热浪随着列车进站席卷而来。在明黄色车厢与月台的交界处，空气中似乎已经掺进了海风的咸味。距离那座海边小城，只剩下最后一段路程了。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
     next: "part3"
 
   part3:
-    title: "远方灯塔"
-    text: "远处的灯塔在夕阳下显得格外安静..."
+    title: "海滨小城的玄关"
+    text: "走出闸机，富有质感的木纹长廊在眼前延伸。空气中那股属于海港的静谧感，穿过宽敞的车站大厅扑面而来。这里就是一切开始的地方——铫子市。在这明暗交替的尽头，那片蔚蓝似乎已近在咫尺。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part3_1.jpg"
     next: "part4"
 
@@ -41,3 +28,26 @@ nodes:
     title: "未完待续"
     text: "本章节的故事暂告一段落，亚托莉露出了开心的笑容。"
     # 不写 next 也不写 choices，代码会触发“本章节已完结！”
+
+
+
+  # branch_search:
+  #   title: "意外收获"
+  #   text: "你在贩卖机下面捡到了一个生锈的罐头！里面竟然有一枚螃蟹币。"
+  #   image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
+  #   reward: 
+  #     crab_coin: 1
+  #   next: "part3"
+
+
+  # part2:
+  #   title: "路边的插曲"
+  #   text: "在路边你看到了一个自动贩卖机，上面贴着奇怪的贴纸。你要走近看看吗？"
+  #   image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
+  #   choices:
+  #     - text: "去看看（消耗 10 体力）"
+  #       next: "branch_search"
+  #       cost: 
+  #         stamina: 10
+  #     - text: "直接去灯塔"
+  #       next: "part3"

@@ -13,31 +13,33 @@ class AtriStoryDB(AtriShopDB):
             cursor.execute('''CREATE TABLE IF NOT EXISTS user_story_progress (
                 user_id TEXT,
                 group_id TEXT,
+                story_id TEXT,
                 current_node TEXT,
                 unlocked_nodes TEXT DEFAULT 'part1',
                 last_update INTEGER,
-                PRIMARY KEY (user_id, group_id)
+                PRIMARY KEY (user_id, group_id, story_id)
             )''')
             conn.commit()
 
-    def get_story_progress(self, user_id, group_id):
+    def get_story_progress(self, user_id, group_id, story_id="main_pilgrimage"):
         group_id = self._format_gid(group_id)
         with self._get_conn() as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
-            cur.execute("SELECT * FROM user_story_progress WHERE user_id = ? AND group_id = ?", 
-                        (user_id, group_id))
+            cur.execute("SELECT * FROM user_story_progress WHERE user_id = ? AND group_id = ? AND story_id = ?", 
+                        (user_id, group_id, story_id))
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def update_story_progress(self, user_id, group_id, node_id, unlocked_str):
+    def update_story_progress(self, user_id, group_id, story_id, node_id, unlocked_str):
         group_id = self._format_gid(group_id)
         with self._get_conn() as conn:
             cur = conn.cursor()
+            # 必须包含 story_id，因为 PRIMARY KEY 是 (user_id, group_id, story_id)
             cur.execute('''REPLACE INTO user_story_progress 
-                           (user_id, group_id, current_node, unlocked_nodes, last_update)
-                           VALUES (?, ?, ?, ?, ?)''', 
-                        (user_id, group_id, node_id, unlocked_str, int(time.time())))
+                           (user_id, group_id, story_id, current_node, unlocked_nodes, last_update)
+                           VALUES (?, ?, ?, ?, ?, ?)''', 
+                        (user_id, group_id, story_id, node_id, unlocked_str, int(time.time())))
             conn.commit()
 
     def update_user_economy(self, user_id, group_id, stamina=0, crab_coin=0):

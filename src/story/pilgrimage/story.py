@@ -6,125 +6,139 @@ import astrbot.api.message_components as Comp
 class StoryManager:
     def __init__(self, curr_dir): 
         self.curr_dir = curr_dir
-        self.script_path = os.path.join(curr_dir, "src", "story", "pilgrimage", "script.yaml")
-        self.story_data = self._load_script()
+        self.stories = {} # 格式: { "story_id": {yaml_content} }
+        self._load_all_scripts()
     
-    def _load_script(self):
-        try:
-            with open(self.script_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            logger.error(f"加载剧情脚本失败: {e}")
-            return {"nodes": {}}
+    def _load_all_scripts(self):
+        """自动扫描 src/story/ 目录下所有 yaml 剧本"""
+        base_path = os.path.join(self.curr_dir, "src", "story")
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+            return
+            
+        for root, dirs, files in os.walk(base_path):
+            for file in files:
+                if file.endswith((".yaml", ".yml")):
+                    try:
+                        with open(os.path.join(root, file), "r", encoding="utf-8") as f:
+                            data = yaml.safe_load(f)
+                            if data and "story_id" in data:
+                                self.stories[data["story_id"]] = data
+                                logger.info(f"✅ 剧本加载成功: {data['story_id']} ({file})")
+                    except Exception as e:
+                        logger.error(f"❌ 加载脚本 {file} 失败: {e}")
 
-    async def run_logic(self, event, db, action, selection=None):
+    async def run_logic(self, event, db, action, selection=None, story_id="main_pilgrimage"):
         user_id = event.get_sender_id()
         group_id = event.get_group_id()
-        
-        # 1. 获取进度
-        progress = db.get_story_progress(user_id, group_id)
+
+        story_data = self.stories.get(story_id)
+        if not story_data:
+            return event.plain_result(f"❌ 剧本数据 {story_id} 未加载。")
+
+        # 1. 获取数据库进度
+        progress = db.get_story_progress(user_id, group_id, story_id)
         if not progress:
-             return event.plain_result("🔭 你还没有开始巡礼呢，请先发送『/开始巡礼』。")
+             return event.plain_result("🔭 你还没有开始这段剧情呢，请先发送指令开启。")
 
         curr_id = progress.get('current_node')
         unlocked_str = progress.get('unlocked_nodes') or ""
         unlocked = unlocked_str.split(',') if unlocked_str else []
         
-        node = self.story_data['nodes'].get(curr_id)
+        node = story_data['nodes'].get(curr_id)
         if not node:
-            return event.plain_result(f"❌ 剧情数据丢失（节点：{curr_id}）")
+            return event.plain_result(f"❌ 找不到当前节点：{curr_id}")
 
         target_id = None
         note = ""
 
-        # 2. 处理交互
+        # 2. 交互处理
         if action == "next":
             if "choices" in node:
-                return await self._render(event, node, note="⚠️ 还没做出选择呢，请先选择一个分支。")
+                return await self._render(event, node, note="⚠️ 请先做出选择。", title=node.get('title'))
             target_id = node.get("next")
-            if not target_id:
-                return event.plain_result("当前剧情已完结，敬请期待后续更新！")
+            if not target_id: return event.plain_result("🎉 本章节已完结！")
 
         elif action == "select":
             if "choices" not in node:
-                return event.plain_result("这里不需要选择，请直接发送『继续前进』。")
-            
+                return event.plain_result("这里不需要选择，请发送『继续前进』。")
             try:
-                # 1. 确保选择数字合法
                 idx = int(str(selection).strip()) - 1
-                if idx < 0 or idx >= len(node['choices']):
-                    raise IndexError
-                
                 selected_choice = node['choices'][idx]
                 
-                # 2. 消耗检查
+                # 消耗检查
                 cost = selected_choice.get('cost', {})
                 if 'stamina' in cost:
-                    economy_data = db.get_user_economy(user_id, group_id)
-                    
-                    # --- 双重保险逻辑 ---
-                    if isinstance(economy_data, dict):
-                        curr_stamina = economy_data.get('stamina', 0)
-                    else:
-                        # 万一数据库还是返回了元组 (stamina, coin)
-                        curr_stamina = economy_data[0] 
-                    
+                    eco = db.get_user_economy(user_id, group_id)
+                    curr_stamina = eco.get('stamina', 0) if isinstance(eco, dict) else eco[0]
                     if curr_stamina < cost['stamina']:
                         return event.plain_result(f"❌ 体力不足！需要 {cost['stamina']}，当前剩余 {curr_stamina}。")
-                    
                     db.update_user_economy(user_id, group_id, stamina=-cost['stamina'])
 
                 target_id = selected_choice['next']
-                
             except (ValueError, IndexError):
-                return event.plain_result(f"❓ 选项无效。请输入 1-{len(node['choices'])} 之间的数字。")
-        # 3. 跳转逻辑
+                return event.plain_result("❓ 选项无效，请输入正确的数字。")
+
+        # 3. 节点跳转与存档
         if target_id:
             if target_id not in unlocked: unlocked.append(target_id)
-            db.update_story_progress(user_id, group_id, target_id, ",".join(unlocked))
+            db.update_story_progress(user_id, group_id, story_id, target_id, ",".join(unlocked))
             
-            new_node = self.story_data['nodes'].get(target_id)
-            if not new_node: return event.plain_result(f"❌ 找不到节点 {target_id}")
+            new_node = story_data['nodes'].get(target_id)
+            if not new_node: return event.plain_result(f"❌ 剧情断链：节点 {target_id} 未定义")
 
-            # --- 奖励检查 ---
+            # 奖励逻辑
             reward = new_node.get('reward', {})
             if 'crab_coin' in reward:
                 db.update_user_economy(user_id, group_id, crab_coin=reward['crab_coin'])
-                note = f"🎁 恭喜！你获得了 {reward['crab_coin']} 枚螃蟹币！\n\n"
+                note = f"🎁 获得螃蟹币 x{reward['crab_coin']}！\n\n"
 
-            return await self._render(event, new_node, note=note)
+            return await self._render(event, new_node, note=note, title=new_node.get('title'))
 
-    async def _render(self, event, node_data, note=""):
-        """构建富媒体消息链：文字在前，图片在后"""
-        text = node_data.get('text', '')
-        image_url = node_data.get('image_url', '')
-        chain = []
-        
-        # 1. 先构建并添加文字正文（包括 note 和 choices）
-        display_text = f"{note}{text}"
-        if "choices" in node_data:
-            choice_text = "\n".join([f"【{i+1}】{c['text']}" for i, c in enumerate(node_data['choices'])])
-            display_text += f"\n\n{choice_text}\n\n(回复：/选择 数字)"
-        
-        chain.append(Comp.Plain(display_text))
-            
-        # 2. 后添加插图（图片会显示在文字下方）
-        if image_url: 
-            chain.append(Comp.Image.fromURL(image_url))
-        
-        return event.chain_result(chain)
-
-    async def start_story(self, event, db):
+    async def start_story(self, event, db, story_id="main_pilgrimage"):
+        """修正后的启动逻辑：完全从 YAML 中读取配置"""
         user_id = event.get_sender_id()
         group_id = event.get_group_id()
+        
+        story_data = self.stories.get(story_id)
+        if not story_data:
+            return event.plain_result(f"❌ 剧本 {story_id} 不存在。")
+
+        # 好感度检查
         fav, _ = db.get_user_state(user_id, group_id)
         if fav < 200:
-            return event.plain_result(f"好感度不足({fav}/200)。\n亚托莉想和更亲近的人一起去巡礼哦~。』")
+            return event.plain_result(f"❤️ 好感度不足({fav}/200)。亚托莉还没准备好和你一起巡礼哦。")
 
+        # 道具检查
         ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
         if ticket_count <= 0:
-            return event.plain_result("你的背包里还没有机票哦！")
+            return event.plain_result("🎒 你的背包里还没有机票哦！")
 
+        # 核心：获取起始节点 ID (YAML中定义 start_node，否则默认取 nodes 的第一个 key)
+        start_node_id = story_data.get('start_node')
+        if not start_node_id:
+            start_node_id = list(story_data['nodes'].keys())[0]
+
+        node = story_data['nodes'].get(start_node_id)
+        
+        # 初始化进度
         db.consume_item(user_id, group_id, "机票")
-        db.update_story_progress(user_id, group_id, "part1", "part1")
-        return await self._render(event, self.story_data['nodes'].get("part1"), note="✈️ 登机成功！\n\n")
+        db.update_story_progress(user_id, group_id, story_id, start_node_id, start_node_id)
+
+        return await self._render(event, node, note="✈️ 剧情开启成功！\n\n", title=node.get('title'))
+
+    async def _render(self, event, node_data, note="", title=""):
+        """统一渲染逻辑"""
+        text = node_data.get('text', '')
+        image_url = node_data.get('image_url', '')
+        title_header = f"【{title}】\n" if title else ""
+        
+        display_text = f"{note}{title_header}{text}"
+        if "choices" in node_data:
+            choice_text = "\n".join([f"({i+1}) {c['text']}" for i, c in enumerate(node_data['choices'])])
+            display_text += f"\n\n{choice_text}\n\n(回复：/选择 数字)"
+        
+        chain = [Comp.Plain(display_text)]
+        if image_url: 
+            chain.append(Comp.Image.fromURL(image_url))
+        return event.chain_result(chain)

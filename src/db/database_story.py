@@ -30,20 +30,6 @@ class AtriStoryDB(AtriShopDB):
             row = cur.fetchone()
             return dict(row) if row else None
 
-    # --- 关键修复：重写父类的方法 ---
-    def get_user_economy(self, user_id, group_id):
-        """显式确保返回字典格式"""
-        group_id = self._format_gid(group_id)
-        with self._get_conn() as conn:
-            conn.row_factory = sqlite3.Row # 必须有这一行
-            cur = conn.cursor()
-            cur.execute("SELECT stamina, crab_coin FROM user_economy WHERE user_id = ? AND group_id = ?", 
-                        (user_id, group_id))
-            row = cur.fetchone()
-            if row:
-                return dict(row)
-            return {"stamina": 0, "crab_coin": 0}
-
     def update_story_progress(self, user_id, group_id, node_id, unlocked_str):
         group_id = self._format_gid(group_id)
         with self._get_conn() as conn:

@@ -43,7 +43,7 @@ class StoryManager:
                 return await self._render(event, node, note="⚠️ 还没做出选择呢，请先选择一个分支。")
             target_id = node.get("next")
             if not target_id:
-                return event.plain_result("🌅 当前剧情已完结，敬请期待后续更新！")
+                return event.plain_result("当前剧情已完结，敬请期待后续更新！")
 
         elif action == "select":
             if "choices" not in node:
@@ -119,11 +119,11 @@ class StoryManager:
         group_id = event.get_group_id()
         fav, _ = db.get_user_state(user_id, group_id)
         if fav < 200:
-            return event.plain_result(f"❤️ 好感度不足({fav}/200)。\n亚托莉：『我想和更亲近的人一起去。』")
+            return event.plain_result(f"好感度不足({fav}/200)。\n亚托莉想和更亲近的人一起去巡礼哦~。』")
 
         ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
         if ticket_count <= 0:
-            return event.plain_result("🎫 你的背包里没有【机票】哦！")
+            return event.plain_result("你的背包里还没有机票哦！")
 
         db.consume_item(user_id, group_id, "机票")
         db.update_story_progress(user_id, group_id, "part1", "part1")

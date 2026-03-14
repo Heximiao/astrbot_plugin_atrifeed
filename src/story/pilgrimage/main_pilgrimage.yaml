@@ -57,7 +57,7 @@ nodes:
   part9:
     title: "犬吠站前广场"
     text: "向着西南方向前进，很快就来到了犬吠站的站前广场，似乎能看见亚托莉小小的身影？"
-    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part9_1.jpg"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part9_1.png"
     next: "part10"
 
   part10:
@@ -71,7 +71,7 @@ nodes:
   part11:
     title: "風のアトリエ周边"
     text: "向着咖啡厅的后院走去，就能看到那标志性的风车状的建筑了。走到了这里就好像又看到了亚托莉的身影，她好奇地拉着我想去风车那里一探究竟，站在风车下望着绿草白云呼吸着新鲜空气，不禁沉醉其中，回过神来身边的亚托莉已经消失不见。“去下个巡礼地吧”，我知道，她就在那里等着我"
-    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part11_1.jpg"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part11_1.png"
     next: "part12"
 
   part12:

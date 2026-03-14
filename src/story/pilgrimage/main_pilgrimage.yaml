@@ -14,7 +14,7 @@ nodes:
 
   part2:
     title: "路途之上"
-    text: "跨过东京的喧嚣，午后的热浪随着列车进站席卷而来。在明黄色车厢与月台的交界处，空气中似乎已经掺进了海风的咸味。距离那座海边小城，只剩下最后一段路程了。"
+    text: "跨过东京的喧嚣，圣地之风乘着列车进站席卷而来。在明黄色车厢与月台的交界处，空气中似乎已经掺进了海风的咸味。距离那座海边小城，只剩下最后一段路程了。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part2_1.jpg"
     next: "part3"
 
@@ -25,12 +25,62 @@ nodes:
     next: "part4"
 
   part4:
-    title: "未完待续"
-    text: "本章节的故事暂告一段落，亚托莉露出了开心的笑容。"
-    # 不写 next 也不写 choices，代码会触发“本章节已完结！”
+    title: "学校"
+    text: "在酒店放完背包后，向东走几百米，就是ATRI动画中出现的学校了。这所学校在动画中被改名为 银子私立银子学校。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part4_1.jpg"
+    next: "part5"
+
+  part5:
+    title: "銚港神社"
+    text: "从学校出来，再向东走两公里，就到了在动漫中被淹没的神社——銚港神社。神社里没什么人，只能听到风神和远处汽车的声音"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part5_1.jpg"
+    next: "part6"
+
+  part6:
+    title: "銚子电铁"
+    text: "走进了那略带古老的车站，乘坐銚子电铁去往下一个取景地。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part6_1.jpg"
+    next: "part7"
+
+  part7:
+    title: "銚子市风景"
+    text: "随着电车的缓缓前行，窗外的风景逐渐从城镇变成了乡村，还能看到大片的农田。还挺有设定中萧条的感觉。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part7_1.jpg"
+    next: "part8"
+
+  part8:
+    title: "犬吠埼灯塔"
+    text: "在君滨站下车，向着海边走一段路，就能看到那座在动画回忆中出现的灯塔了。汹涌的海浪拍打着岸边的防波堤，发出低沉的嘶吼声。似乎能回忆起夏生的往事...（顺带一提，这里也是动画电影“烟花”的取景地）"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part8_1.jpg"
+    next: "part9"
+
+  part9:
+    title: "犬吠站前广场"
+    text: "向着西南方向前进，很快就来到了犬吠站的站前广场，似乎能看见亚托莉小小的身影？"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part9_1.jpg"
+    next: "part10"
+
+  part10:
+    title: "風のアトリエ"
+    text: "向西继续走2公里，就来到了动画里出现的咖啡厅——風のアトリエ。在动漫这里是水菜萌的家，咖啡厅还是挺精致的，可惜没开门。（还有这家店的名称的发音就是atri）"
+    images: 
+      - "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part10_1.jpg"
+      - "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part10_2.jpg"
+    next: "part11"
+
+  part11:
+    title: "風のアトリエ周边"
+    text: "向着咖啡厅的后院走去，就能看到那标志性的风车状的建筑了。走到了这里就好像又看到了亚托莉的身影，她好奇地拉着我想去风车那里一探究竟，站在风车下望着绿草白云呼吸着新鲜空气，不禁沉醉其中，回过神来身边的亚托莉已经消失不见。“去下个巡礼地吧”，我知道，她就在那里等着我"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part11_1.jpg"
+    next: "part12"
+
+  part12:
+    title: "巡礼结束"
+    text: "111"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part12_1.jpg"
 
 
-
+  # 不写 next 也不写 choices，代码会触发“本章节已完结！”
   # branch_search:
   #   title: "意外收获"
   #   text: "你在贩卖机下面捡到了一个生锈的罐头！里面竟然有一枚螃蟹币。"

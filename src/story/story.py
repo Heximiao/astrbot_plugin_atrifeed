@@ -145,17 +145,26 @@ class StoryManager:
         return await self._render(event, node, note=note, title=node.get('title'))
 
     async def _render(self, event, node_data, note="", title=""):
-        """统一渲染逻辑"""
+        """支持多图渲染的逻辑"""
         text = node_data.get('text', '')
-        image_url = node_data.get('image_url', '')
+        # 兼容处理：优先找 images 列表，找不到则看有没有旧的 image_url
+        images = node_data.get('images', []) 
+        if not images and node_data.get('image_url'):
+            images = [node_data.get('image_url')]
+
         title_header = f"【{title}】\n" if title else ""
-        
         display_text = f"{note}{title_header}{text}"
+        
         if "choices" in node_data:
             choice_text = "\n".join([f"({i+1}) {c['text']}" for i, c in enumerate(node_data['choices'])])
             display_text += f"\n\n{choice_text}\n\n(回复：/选择 数字)"
         
+        # 构建消息链
         chain = [Comp.Plain(display_text)]
-        if image_url: 
-            chain.append(Comp.Image.fromURL(image_url))
+        
+        # 遍历图片列表，全部加入消息链
+        for url in images:
+            if url:
+                chain.append(Comp.Image.fromURL(url))
+                
         return event.chain_result(chain)

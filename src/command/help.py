@@ -1,11 +1,12 @@
 import os
 import base64 # 1. 导入 base64 库
-import logging
+#import logging
 import random
+from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 
 # 获取 AstrBot 的日志对象
-logger = logging.getLogger("astrbot")
+#logger = logging.getLogger("astrbot")
 
 async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
     # 1. 基础数据准备

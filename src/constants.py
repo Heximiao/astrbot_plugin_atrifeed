@@ -44,4 +44,7 @@ _DEFAULT_KEYWORD_ROUTES: tuple[KeywordRoute, ...] = (
     KeywordRoute(keyword="我的背包", action="atri_backpack"),
     KeywordRoute(keyword="使用", action="atri_use"),
 
+    KeywordRoute(keyword="继续前进", action="story_next"),
+    KeywordRoute(keyword="开始巡礼", action="story_start"),
+
 )

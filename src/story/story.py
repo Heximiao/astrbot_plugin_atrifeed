@@ -115,15 +115,15 @@ class StoryManager:
         else:
             # 【逻辑 B】新玩家：鉴权 & 扣票
             fav, _ = db.get_user_state(user_id, group_id)
-            if fav < 200:
-                return event.plain_result(f"❤️ 好感度不足({fav}/200)。")
+            if fav < 300:
+                return event.plain_result(f"与亚托莉的好感度不足({fav}/300)。")
 
             ticket_count = db.get_user_item_quantity(user_id, group_id, "机票")
             if ticket_count <= 0:
-                return event.plain_result("🎒 你的背包里还没有机票哦！")
+                return event.plain_result("你的背包里还没有机票哦！需要机票才可进行圣地巡礼~")
             
             db.consume_item(user_id, group_id, "机票")
-            note = "✈️ 验证通过，机票已使用！\n\n"
+            note = "✈️ 验证通过，机票已使用！ （pass：巡礼期间可能会碰到亚托莉哦~）\n\n"
             # 新玩家的解锁列表初始只有起始节点
             # 注意：这里后面会统一处理起始节点的添加
 

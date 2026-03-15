@@ -7,7 +7,7 @@ start_node: "part1"
 nodes:
   part1:
     title: "圣地巡礼伊始"
-    text: "出发！前往ATRI的取景地，目的地————铫子市！"
+    text: "出发！前往ATRI的取景地，目的地————铫子市！    （亚托莉小贴士：推荐在私聊环境下阅读本剧情哦~）"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part1_1.jpg"
     next: "part2"
   

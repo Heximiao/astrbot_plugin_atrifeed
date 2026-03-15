@@ -43,7 +43,7 @@ nodes:
     next: "part7"
 
   part7:
-    title: "銚子市风景"
+    title: "窗外的流光——銚子市风景"
     text: "电车摇摇晃晃地前行，窗外的风景从城镇逐渐过渡为连绵的农田。这种略带萧条却又温柔的景象，像极了那个在末日边缘努力生活着的日常。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part7_1.jpg"
     next: "part8"
@@ -61,7 +61,7 @@ nodes:
     next: "part10"
 
   part10:
-    title: "風のアトリエ"
+    title: "风之工坊——風のアトリエ"
     text: "向西前行两公里，终于抵达到了那家名为“風のアトリエ”的咖啡厅。动画里是水菜萌的家，“atri”的发音，却与那个魂牵梦绕的名字如出一辙。可惜店门紧闭，只能在精致的门扉前驻足片刻。"
     images: 
       - "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part10_1.jpg"

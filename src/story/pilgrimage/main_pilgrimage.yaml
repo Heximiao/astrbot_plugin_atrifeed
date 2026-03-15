@@ -25,44 +25,44 @@ nodes:
     next: "part4"
 
   part4:
-    title: "学校"
+    title: "校舍"
     text: "在酒店放完背包后，向东走几百米，就是ATRI动画中出现的学校了。这所学校在动画中被改名为 银子私立银子学校。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part4_1.jpg"
     next: "part5"
 
   part5:
     title: "銚港神社"
-    text: "从学校出来，再向东走两公里，就到了在动漫中被淹没的神社——銚港神社。神社里没什么人，只能听到风神和远处汽车的声音"
+    text: "离开学校继续向东，在两公里外的尽头，坐落着那座在故事中被深海淹没的神社——銚港神社。现实中，这里唯有掠过指尖的清风，以及远处偶尔传来的车笛，一切静谧得像是时间停止了流动。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part5_1.jpg"
     next: "part6"
 
   part6:
-    title: "銚子电铁"
-    text: "走进了那略带古老的车站，乘坐銚子电铁去往下一个取景地。"
+    title: "时光的铁道——銚子电铁"
+    text: "踏入那间散发着古旧气息的车站，指尖触碰着斑驳的扶手。登上銚子电铁，老旧的电机声像是岁月的低语，载着旅人前往下一个梦境的碎片。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part6_1.jpg"
     next: "part7"
 
   part7:
     title: "銚子市风景"
-    text: "随着电车的缓缓前行，窗外的风景逐渐从城镇变成了乡村，还能看到大片的农田。还挺有设定中萧条的感觉。"
+    text: "电车摇摇晃晃地前行，窗外的风景从城镇逐渐过渡为连绵的农田。这种略带萧条却又温柔的景象，像极了那个在末日边缘努力生活着的日常。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part7_1.jpg"
     next: "part8"
 
   part8:
     title: "犬吠埼灯塔"
-    text: "在君滨站下车，向着海边走一段路，就能看到那座在动画回忆中出现的灯塔了。汹涌的海浪拍打着岸边的防波堤，发出低沉的嘶吼声。似乎能回忆起夏生的往事...（顺带一提，这里也是动画电影“烟花”的取景地）"
+    text: "在君滨站下车，循着浪潮的声音走去，白色的灯塔傲然挺立。汹涌的海浪拍打着防波堤，发出低沉的嘶吼，仿佛在诉说着夏生那些深藏的往事……此处，亦是《烟花》记忆重叠之地。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part8_1.jpg"
     next: "part9"
 
   part9:
     title: "犬吠站前广场"
-    text: "向着西南方向前进，很快就来到了犬吠站的站前广场，似乎能看见亚托莉小小的身影？"
+    text: "向着西南方向前进，很快就来到了犬吠站的站前广场。空旷的广场在阳光下熠熠生辉。恍惚间，前方似乎闪过一个娇小的身影，露出如夏日般灿烂的笑容。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part9_1.png"
     next: "part10"
 
   part10:
     title: "風のアトリエ"
-    text: "向西继续走2公里，就来到了动画里出现的咖啡厅——風のアトリエ。在动漫这里是水菜萌的家，咖啡厅还是挺精致的，可惜没开门。（还有这家店的名称的发音就是atri）"
+    text: "向西前行两公里，终于抵达到了那家名为“風のアトリエ”的咖啡厅。动画里是水菜萌的家，“atri”的发音，却与那个魂牵梦绕的名字如出一辙。可惜店门紧闭，只能在精致的门扉前驻足片刻。"
     images: 
       - "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part10_1.jpg"
       - "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part10_2.jpg"
@@ -70,14 +70,20 @@ nodes:
 
   part11:
     title: "風のアトリエ周边"
-    text: "向着咖啡厅的后院走去，就能看到那标志性的风车状的建筑了。走到了这里就好像又看到了亚托莉的身影，她好奇地拉着我想去风车那里一探究竟，站在风车下望着绿草白云呼吸着新鲜空气，不禁沉醉其中，回过神来身边的亚托莉已经消失不见。“去下个巡礼地吧”，我知道，她就在那里等着我"
+    text: "绕过咖啡厅来到后院，很有辨识度的风车状建筑在碧空下缓缓转动。亚托莉似乎又出现在了身边，好奇地拉着衣角想去一探究竟。仰望绿草白云，呼吸着纯净的空气，等回过神来，身侧已空无一人……但没关系，她一定就在不远处等着。"
     image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part11_1.png"
     next: "part12"
 
   part12:
-    title: "巡礼结束"
-    text: "111"
-    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part12_1.jpg"
+    title: "残霞下的外川站"
+    text: "夕阳染红了地平线。坐在外川站月台的木椅上，余晖洒在空荡荡的铁轨上，那个熟悉的幻影再次并肩而坐。这一刻，时间失去了意义，只剩下潮汐的声音在耳畔回响。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part12_1.png"
+    next: "part13"
+
+  part13:
+    title: "归途"
+    text: "坐上返程的电车。窗外的铫子市逐渐模糊在夜幕中，但那份名为“ATRI”的温暖，已经随同海风一起，深深地刻进了这段漫长的夏日回忆里。"
+    image_url: "https://cdn.jsdelivr.net/gh/Heximiao/atrifeed_story_pic@main/storypic/pilgrimage/part13_1.jpg"
 
 
   # 不写 next 也不写 choices，代码会触发“本章节已完结！”

@@ -156,8 +156,15 @@ class StoryManager:
         display_text = f"{note}{title_header}{text}"
         
         if "choices" in node_data:
+            # 如果有分支选项
             choice_text = "\n".join([f"({i+1}) {c['text']}" for i, c in enumerate(node_data['choices'])])
-            display_text += f"\n\n{choice_text}\n\n(回复：/选择 数字)"
+            display_text += f"\n\n{choice_text}\n\n▶ 请回复 [ /选择 数字 ] 决定后续方向"
+        elif node_data.get('next'):
+            # 如果没有分支，但有下一节
+            display_text += "\n\n▶ 发送 [ 继续前进 ] 推进剧情"
+        else:
+            # 如果没有 next 也没有 choices，说明到头了
+            display_text += "\n\n✨ 本章节已完结"
         
         # 构建消息链
         chain = [Comp.Plain(display_text)]

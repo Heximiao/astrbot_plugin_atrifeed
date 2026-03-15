@@ -76,6 +76,8 @@ class AtriPlugin(Star):
                 "atri_shop": self.atri_shop,
                 "atri_backpack": self.atri_backpack,
                 "atri_use": self.atri_use,
+                "story_next": self.story_next,
+                "story_start": self.story_start,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 

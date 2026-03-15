@@ -38,4 +38,10 @@ _DEFAULT_KEYWORD_ROUTES: tuple[KeywordRoute, ...] = (
     KeywordRoute(keyword="亚托莉骰子", action="atri_dice"),
     KeywordRoute(keyword="🎲", action="atri_dice"),
 
+    KeywordRoute(keyword="商店", action="atri_shop"),
+    KeywordRoute(keyword="购买", action="atri_shop"),
+
+    KeywordRoute(keyword="我的背包", action="atri_backpack"),
+    KeywordRoute(keyword="使用", action="atri_use"),
+
 )

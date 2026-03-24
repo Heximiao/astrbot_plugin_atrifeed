@@ -14,6 +14,7 @@ from .src.db.database import AtriDB
 from .src.db.database_shop import AtriShopDB
 from .src.db.database_story import AtriStoryDB
 from .src.command.feeding import *
+from .src.command.pet import *
 from .src.utils.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic
 from .src.command.abuse import run_abuse_logic
@@ -149,6 +150,13 @@ class AtriPlugin(Star):
         if not is_group_allowed(event, conf): return
         if self.is_blocked(event): return
         async for result in run_feed_fruit_logic(event, self.db,self.curr_dir):
+            yield result
+    @filter.command("🐱", alias={"🐶","🐰", "🦊", "🐼", "🐹", "🐥", "🐦", "🐧", "🐑", "🐴","🐷","🐘","🐨","🦙","🦉","🦦","🦆","🐯"})
+    async def pet_animal(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf): return
+        if self.is_blocked(event): return
+        async for result in run_pet_animal_logic(event,self.curr_dir):
             yield result
 
     @filter.command("✨")

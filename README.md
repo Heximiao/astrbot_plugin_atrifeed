@@ -55,6 +55,7 @@ astrbot_plugin_atrifeed/
 │   │   ├── gig.py            # 打工系统
 │   │   ├── dice.py           # 骰子博弈
 │   │   ├── radish.py         # 萝卜子互动
+│   │   ├── pat.py            # 动物表情包的反馈
 │   │   └── other_emoji.py    # 针筒等特殊表情互动
 │   ├── story/                # 剧情系统
 │   │   ├── __init__.py
@@ -154,5 +155,13 @@ astrbot_plugin_atrifeed/
 1. **Playwright**：用于渲染 `template/` 下的 HTML 模板，请确保环境已安装。（一般自带，不用管）
 2. **资源路径**：请勿随意移动 `pic/` 文件夹，否则会导致表情包发送失败。
 3. **分词库**：更新插件会自动安装。
+
+## ❤️ 致谢
+
+本项目的开发离不开以下开源项目与社区的支持：
+
+* **[AstrBot](https://github.com/Soulter/AstrBot)**：感谢 Soulter 提供的强大且易用的生态框架。
+* **[星火燃愿]**：感谢星火燃愿提供的巡礼图片的处理支持
+* **[Furina010013](https://github.com/Furina010013)**:感谢提供的代码贡献支持
 
 觉得亚托莉可爱的话，就给个 star 吧 ❤️~

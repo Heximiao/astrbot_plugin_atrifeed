@@ -79,6 +79,7 @@ class AtriPlugin(Star):
                 "atri_use": self.atri_use,
                 "story_next": self.story_next,
                 "story_start": self.story_start,
+                "pet_animal": self.pet_animal,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
 

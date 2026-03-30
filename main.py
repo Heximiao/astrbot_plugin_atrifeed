@@ -15,6 +15,7 @@ from .src.db.database_shop import AtriShopDB
 from .src.db.database_story import AtriStoryDB
 from .src.command.feeding import *
 from .src.command.pet import *
+from .src.command.welcome import *
 from .src.utils.utils import is_group_allowed
 from .src.command.help import run_atri_help_logic
 from .src.command.abuse import run_abuse_logic
@@ -134,6 +135,11 @@ class AtriPlugin(Star):
                     if result: yield result
                 
                 event.stop_event()
+
+    @filter.event_message_type(filter.EventMessageType.ALL)
+    # 监听入群和退群消息
+    async def on_group_member_change(self, event: AstrMessageEvent):
+        await welcome_new_user(self,event)
 
     # --- 指令转发区域 ---
 

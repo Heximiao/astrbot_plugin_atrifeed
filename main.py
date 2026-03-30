@@ -150,6 +150,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_feed_crab_logic(event, self.db, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("🍧", alias={"🍜","🍎", "🍉", "🍓", "🍔", "🍕", "🍱", "🍄", "🍭", "🍙"})
     async def feed_fruit(self, event: AstrMessageEvent):
@@ -158,6 +159,8 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_feed_fruit_logic(event, self.db,self.curr_dir):
             yield result
+        event.stop_event()
+
     @filter.command("🐱", alias={"🐶","🐰", "🦊", "🐼", "🐹", "🐥", "🐦", "🐧", "🐑", "🐴","🐷","🐘","🐨","🦙","🦉","🦦","🦆","🐯"})
     async def pet_animal(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})
@@ -165,6 +168,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_pet_animal_logic(event,self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("✨")
     async def star_effect(self, event: AstrMessageEvent):
@@ -173,6 +177,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_star_effect_logic(event):
             yield result
+        event.stop_event()
 
     @filter.command("🚬")
     async def no_smoke(self, event: AstrMessageEvent):
@@ -181,6 +186,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_no_smoke_logic(event, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("💩")
     async def poop_effect(self, event: AstrMessageEvent):
@@ -189,6 +195,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return
         async for result in run_poop_effect_logic(event, self.db, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("亚托莉帮助")
     async def atri_help(self, event: AstrMessageEvent):
@@ -199,6 +206,7 @@ class AtriPlugin(Star):
         if self.is_blocked(event): return   
         async for result in run_atri_help_logic(self, event, conf):
             yield result
+        event.stop_event()
 
     @filter.command("我的亚托莉")
     async def my_atri_card(self, event: AstrMessageEvent):
@@ -210,6 +218,7 @@ class AtriPlugin(Star):
         # 传入 self.html_render 作为渲染函数
         async for result in run_my_atri_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
+        event.stop_event()
 
     @filter.command("萝卜子", alias={"🥕","飞舞萝卜子"})
     async def radish_cmd(self, event: AstrMessageEvent):
@@ -221,6 +230,7 @@ class AtriPlugin(Star):
         # 调用 radish.py 里的逻辑
         async for result in run_radish_logic(event, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("💉")
     async def injection_cmd(self, event: AstrMessageEvent):
@@ -231,6 +241,7 @@ class AtriPlugin(Star):
         
         async for result in run_injection_logic(event, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("亚托莉签到")
     async def atri_signin(self, event: AstrMessageEvent):
@@ -242,6 +253,7 @@ class AtriPlugin(Star):
         # 传入 self.html_render 和 self.curr_dir
         async for result in run_sign_in_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
+        event.stop_event()
 
     @filter.command("亚托莉打工")
     async def atri_work(self, event: AstrMessageEvent):
@@ -253,6 +265,7 @@ class AtriPlugin(Star):
         # 传入 self.html_render
         async for result in run_gig_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
+        event.stop_event()
 
     @filter.command("亚托莉骰子", alias={"🎲", "dice"})
     async def atri_dice(self, event: AstrMessageEvent):
@@ -263,6 +276,7 @@ class AtriPlugin(Star):
         
         async for result in run_dice_logic(event, self.db, self.curr_dir):
             yield result
+        event.stop_event()
     
     @filter.command("💤")
     async def sleep_cmd(self, event: AstrMessageEvent):
@@ -272,6 +286,7 @@ class AtriPlugin(Star):
         
         async for result in run_sleep_logic(event, self.curr_dir):
             yield result
+        event.stop_event()
 
     @filter.command("商店", alias={"购买"})
     async def atri_shop(self, event: AstrMessageEvent):
@@ -283,6 +298,7 @@ class AtriPlugin(Star):
         # 核心修改：增加 self.curr_dir 和 self.html_render 两个参数
         async for result in run_shop_logic(event, self.db, self.curr_dir, self.html_render):
             yield result
+        event.stop_event()
 
     @filter.command("我的背包")
     async def atri_backpack(self, event: AstrMessageEvent):
@@ -293,6 +309,7 @@ class AtriPlugin(Star):
         
         async for result in run_backpack_logic(event, self.db):
             yield result
+        event.stop_event()
     
     @filter.command("使用")
     async def atri_use(self, event: AstrMessageEvent):
@@ -303,8 +320,9 @@ class AtriPlugin(Star):
         
         async for result in run_use_item_logic(event, self.db):
             yield result
+        event.stop_event()
 
-# 剧情相关指令
+    # 剧情相关指令
     @filter.command("开始巡礼")
     async def story_start(self, event: AstrMessageEvent):
         conf = self.config if self.config else (self.context.get_config() or {})
@@ -314,6 +332,7 @@ class AtriPlugin(Star):
         result = await self.story_mgr.start_story(event, self.db)
         if result:
             yield result
+        event.stop_event()
     
     @filter.command("继续前进")
     async def story_next(self, event: AstrMessageEvent):
@@ -324,6 +343,7 @@ class AtriPlugin(Star):
         # 使用 yield 发送管理器返回的 MessageChain
         async for result in self._call_story_logic(event, action="next"):
             yield result
+        event.stop_event()
 
     @filter.command("选择")
     async def story_select(self, event: AstrMessageEvent):
@@ -339,6 +359,7 @@ class AtriPlugin(Star):
         
         async for result in self._call_story_logic(event, action="select", selection=selection):
             yield result
+        event.stop_event()
 
     async def _call_story_logic(self, event, action, selection=None):
         """统一封装逻辑调用层"""
@@ -347,9 +368,9 @@ class AtriPlugin(Star):
             yield event.plain_result(result)
         else:
             yield result
+        event.stop_event()
 
     # --- 特殊逻辑 ---
-
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_at_abuse_monitor(self, event: AstrMessageEvent):
         """专门处理 @机器人 时的辱骂检测"""

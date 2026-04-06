@@ -136,6 +136,7 @@ astrbot_plugin_atrifeed/
 ![好感度卡片演示](pic/demo/好感度卡片演示.png)
 ![投喂演示](pic/demo/投喂演示.png)
 ![帮助演示](pic/demo/帮助演示.png)
+![入群欢迎演示](pic/demo/入群欢迎演示.jpg)
 
 ## ⚙️ 配置项说明
 

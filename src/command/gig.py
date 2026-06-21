@@ -5,6 +5,7 @@ from datetime import datetime
 # 导入同级目录 feeding.py 中的工具函数
 from .feeding import send_combined_msg, get_pic_path
 import astrbot.api.message_components as Comp
+from astrbot.api import logger
 from ..utils.utils import forward_text_result
 
 async def run_gig_logic(event, db, curr_dir, html_render):
@@ -64,7 +65,8 @@ async def run_gig_logic(event, db, curr_dir, html_render):
     # 读取模板
     tmpl_path = os.path.join(curr_dir, "template", "gig.html")
     if not os.path.exists(tmpl_path):
-        yield event.plain_result(f"错误：找不到模板文件 {tmpl_path}")
+        logger.error(f"[Atri] 模板文件缺失: {tmpl_path}")
+        yield event.plain_result("错误：模板文件缺失，请联系管理员检查插件资源。")
         return
 
     with open(tmpl_path, "r", encoding="utf-8") as f:

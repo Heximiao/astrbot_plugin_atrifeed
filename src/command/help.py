@@ -43,7 +43,8 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
     
     lihui_dir = os.path.join(curr_dir, "pic", "lihui")
     if not os.path.exists(template_path):
-        yield event.plain_result(f"错误：找不到模板 {template_path}")
+        logger.error(f"[Atri] 模板文件缺失: {template_path}")
+        yield event.plain_result("错误：模板文件缺失，请联系管理员检查插件资源。")
         return
 
     # 3. 读取立绘并转为 Base64 (核心修改)

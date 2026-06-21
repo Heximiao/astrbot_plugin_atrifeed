@@ -45,7 +45,8 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
         # 读取模板
         template_path = os.path.join(curr_dir, "template", "shop.html")
         if not os.path.exists(template_path):
-            yield event.plain_result(f"错误：找不到模板文件 {template_path}")
+            logger.error(f"[Atri] 模板文件缺失: {template_path}")
+            yield event.plain_result("错误：模板文件缺失，请联系管理员检查插件资源。")
             return
 
         with open(template_path, "r", encoding="utf-8") as f:

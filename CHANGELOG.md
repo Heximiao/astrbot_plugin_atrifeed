@@ -1,6 +1,9 @@
 ## 2026.6.21更新
 添加解除拉黑指令，权限可配置bot管理员，群主和群管理员
 
+
+添加图片渲染失败时的回退逻辑：[#20](https://github.com/Heximiao/astrbot_plugin_atrifeed/issues/20)
+
 ## 2026.4.6更新
 修改部分商品的价格与效果调整
 

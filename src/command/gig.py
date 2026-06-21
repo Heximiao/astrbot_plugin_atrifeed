@@ -5,6 +5,7 @@ from datetime import datetime
 # 导入同级目录 feeding.py 中的工具函数
 from .feeding import send_combined_msg, get_pic_path
 import astrbot.api.message_components as Comp
+from ..utils.utils import forward_text_result
 
 async def run_gig_logic(event, db, curr_dir, html_render):
     uid = event.get_sender_id()
@@ -108,4 +109,10 @@ async def run_gig_logic(event, db, curr_dir, html_render):
         ]
         yield event.chain_result(chain)
     except Exception as e:
-        yield event.plain_result(f"（；´д｀）渲染失败了... 赚到了 {earn_coin} 币")
+        text = "\n".join([
+            "打工完成！",
+            f"赚到：{earn_coin}币",
+            f"消耗：{cost_stamina}体力",
+            f"图片渲染失败，已切换为文本版：{e}",
+        ])
+        yield forward_text_result(event, text)

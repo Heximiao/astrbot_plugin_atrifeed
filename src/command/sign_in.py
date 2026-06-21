@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api import logger
+from ..utils.utils import forward_text_result
 
 async def run_sign_in_logic(event: AstrMessageEvent, db, curr_dir: str, html_render):
     uid = event.get_sender_id()
@@ -70,4 +71,9 @@ async def run_sign_in_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         yield event.image_result(url)
     except Exception as e:
         logger.error(f"ATRI 渲染失败: {e}")
-        yield event.plain_result(f"🌟 签到成功！\n资产：{new_coin}币 | {new_stamina}体力")
+        text = (
+            "签到成功！\n"
+            f"资产：{new_coin}币 | {new_stamina}体力\n"
+            f"图片渲染失败，已切换为文本版：{e}"
+        )
+        yield forward_text_result(event, text)

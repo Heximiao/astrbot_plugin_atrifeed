@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api import logger # 别忘了导入 logger
+from ..utils.utils import forward_text_result
 
 async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
     user_id = event.get_sender_id()
@@ -75,7 +76,20 @@ async def run_shop_logic(event: AstrMessageEvent, db, curr_dir, html_render):
             
         except Exception as e:
             logger.error(f"商店页面渲染失败: {e}")
-            yield event.plain_result("哎呀，商店看板娘不小心摔倒了，图片没画出来...")
+            lines = ["亚托莉小卖部", f"日期：{datetime.now().strftime('%Y-%m-%d')}", ""]
+            for item in daily_items:
+                name = item.get("item_name", "未知商品")
+                price = item.get("price", "?")
+                desc = item.get("description", "")
+                limit = item.get("daily_limit", item.get("max_limit", ""))
+                line = f"{name} - {price}币"
+                if limit != "":
+                    line += f" | 限购：{limit}"
+                if desc:
+                    line += f"\n  {desc}"
+                lines.append(line)
+            lines.extend(["", f"图片渲染失败，已切换为文本版：{e}"])
+            yield forward_text_result(event, "\n".join(lines))
         
         random.seed() # 重置种子
         return

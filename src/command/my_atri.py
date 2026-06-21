@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api import logger
+from ..utils.utils import forward_text_result
 
 async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_render_func):
     uid = event.get_sender_id()
@@ -208,5 +209,41 @@ async def run_my_atri_logic(event: AstrMessageEvent, db, curr_dir: str, html_ren
         yield event.image_result(url)
     except Exception as e:
         logger.error(f"ATRI 渲染失败: {e}")
+        item_names = {
+            "strawberry": "草莓",
+            "watermelon": "西瓜",
+            "apple": "苹果",
+            "noodle": "拉面",
+            "shavedice": "刨冰",
+            "hamburger": "汉堡",
+            "pizza": "披萨",
+            "bento": "便当",
+            "mushroom": "蘑菇",
+            "lollipop": "棒棒糖",
+            "riceball": "饭团",
+            "crab": "螃蟹",
+        }
+        item_lines = [
+            f"{name}：{render_data['items'].get(key, 0)}"
+            for key, name in item_names.items()
+            if render_data["items"].get(key, 0)
+        ]
+        text = "\n".join([
+            "我的亚托莉",
+            f"用户：{render_data['user_name']}",
+            f"日期：{render_data['curr_date']}",
+            f"{group_name}",
+            f"相遇天数：{meet_days}",
+            f"好感度：{fav}",
+            f"体力：{curr_stamina}",
+            f"螃蟹币：{curr_crab_coin}",
+            f"心情：{mood_text}",
+            f"总投喂：{stats.get('total_count', 0)}",
+            "投喂明细：" + ("、".join(item_lines) if item_lines else "暂无"),
+            f"亚托莉：{extra_msg}" if extra_msg else "",
+            f"图片渲染失败，已切换为文本版：{e}",
+        ])
+        yield forward_text_result(event, text)
+        extra_msg = None
     if extra_msg:
         yield event.plain_result(extra_msg)

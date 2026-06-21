@@ -1,6 +1,7 @@
 # src/utils.py
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api import logger
+from astrbot.api.message_components import Node, Plain
 
 UNBLOCK_PERMISSION_BOT_ADMIN = "仅bot管理员"
 UNBLOCK_PERMISSION_GROUP_OWNER = "群主和bot管理员"
@@ -32,6 +33,32 @@ def is_group_allowed(event: AstrMessageEvent, config: dict) -> bool:
         return False
         
     return True
+
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def forward_text_result(event: AstrMessageEvent, text: str, name: str = "亚托莉"):
+    """Return a OneBot-style merged-forward text result."""
+    self_id = None
+    get_self_id = getattr(event, "get_self_id", None)
+    if callable(get_self_id):
+        self_id = get_self_id()
+    if self_id is None:
+        self_id = getattr(getattr(event, "message_obj", None), "self_id", None)
+    if self_id is None:
+        self_id = event.get_sender_id()
+
+    node = Node(
+        uin=_safe_int(self_id),
+        name=name,
+        content=[Plain(text)],
+    )
+    return event.chain_result([node])
 
 
 async def get_group_member_role(event: AstrMessageEvent, group_id: str, user_id: str) -> str:

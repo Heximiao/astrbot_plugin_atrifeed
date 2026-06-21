@@ -4,6 +4,7 @@ import base64 # 1. 导入 base64 库
 import random
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
+from ..utils.utils import forward_text_result
 
 # 获取 AstrBot 的日志对象
 #logger = logging.getLogger("astrbot")
@@ -113,4 +114,12 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
 
     except Exception as e:
         logger.error(f"渲染亚托莉帮助失败: {e}")
-        yield event.plain_result(f"渲染失败: {str(e)}")
+        lines = [
+            "亚托莉帮助",
+            f"关键词触发：{'开启' if keyword_enabled else '关闭'}",
+            f"匹配模式：{mode_text}",
+            "",
+        ]
+        lines.extend(f"{item['command']} - {item['description']}" for item in help_items)
+        lines.extend(["", f"图片渲染失败，已切换为文本版：{e}"])
+        yield forward_text_result(event, "\n".join(lines))

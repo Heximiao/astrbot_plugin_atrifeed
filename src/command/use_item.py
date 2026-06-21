@@ -13,6 +13,20 @@ async def run_use_item_logic(event: AstrMessageEvent, db):
         return
         
     item_name = parts[1]
+
+    if item_name == "机票":
+        item_data = db.get_item_by_name(item_name)
+        if not item_data:
+            yield event.plain_result(f"这种物品（{item_name}）好像已经失传了...")
+            return
+
+        current_qty = db.get_user_item_quantity(user_id, group_id, item_name)
+        if current_qty <= 0:
+            yield event.plain_result(f"你的背包里没有 {item_name} 呢...")
+            return
+
+        yield event.plain_result("✈️ 机票是开启『圣地巡礼』的关键道具，不会通过使用命令消耗。请在满足条件后发送『开始巡礼』。")
+        return
     
     # 1. 在数据库中尝试消耗
     item_data, status_msg = db.consume_item(user_id, group_id, item_name)

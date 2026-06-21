@@ -30,6 +30,7 @@ from .src.command.shopping import run_shop_logic
 from .src.command.backpack import run_backpack_logic
 from .src.command.use_item import run_use_item_logic
 from .src.command.unblock import run_unblock_logic
+from .src.desktop_pet import DesktopPetService
 
 from .src.story.story import StoryManager
 
@@ -84,6 +85,8 @@ class AtriPlugin(Star):
                 "pet_animal": self.pet_animal,
             }
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
+            self.desktop_pet_service = DesktopPetService(self)
+            self.desktop_pet_service.start_if_enabled()
 
     def is_blocked(self, event: AstrMessageEvent) -> bool:
         """检查用户是否被全局拉黑"""
@@ -424,3 +427,7 @@ class AtriPlugin(Star):
     async def admin_clear(self, event: AstrMessageEvent):
         self.db.clear_daily_log()
         yield event.plain_result("已清理今日投喂记录。")
+
+    async def terminate(self):
+        if hasattr(self, "desktop_pet_service"):
+            self.desktop_pet_service.stop()

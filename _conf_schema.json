@@ -42,5 +42,11 @@
         "description": "启用贝叶斯辱骂检测",
         "hint": "关闭后只检测严重关键词，不再使用贝叶斯模型判断。如果你要经常和bot聊天斗嘴，建议关闭以避免误伤。",
         "default": true
+    },
+    "desktop_pet_enabled": {
+        "type": "bool",
+        "description": "实验性桌宠模式",
+        "hint": "开启后尝试在运行 AstrBot 的本机启动 ATRI 桌宠客户端。仅适用于有桌面环境的 Windows 本机，服务器/容器环境可能无法显示。",
+        "default": false
     }
 }

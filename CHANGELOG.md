@@ -4,6 +4,12 @@
 
 添加图片渲染失败时的回退逻辑：[#20](https://github.com/Heximiao/astrbot_plugin_atrifeed/issues/20)
 
+
+修复当用户使用机票时被扣除机票的问题
+
+
+修复找不到HTML模板时会把完整本机路径发送出去的问题
+
 ## 2026.4.6更新
 修改部分商品的价格与效果调整
 

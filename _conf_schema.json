@@ -30,7 +30,14 @@
         "hint": "开启后，达到原谅上限（也就是被原谅一次后再次触发拉黑）的用户会被 AstrBot 框架拉黑，彻底无法触发机器人的任何功能。关闭则在被拉黑时仅无法使用此插件。",
         "default": true
     },
-        "bayes_abuse_detection": {
+    "unblock_permission": {
+        "type": "string",
+        "description": "解除拉黑指令权限",
+        "hint": "控制“解除拉黑”指令的使用者范围。bot 管理员始终可用；群主/群管理员权限会通过 NapCat 群成员信息判断。",
+        "options": ["仅bot管理员", "群主和bot管理员", "群主和群管理员和bot管理员"],
+        "default": "仅bot管理员"
+    },
+    "bayes_abuse_detection": {
         "type": "bool",
         "description": "启用贝叶斯辱骂检测",
         "hint": "关闭后只检测严重关键词，不再使用贝叶斯模型判断。如果你要经常和bot聊天斗嘴，建议关闭以避免误伤。",

@@ -1,5 +1,10 @@
 # src/utils.py
 from astrbot.api.event import AstrMessageEvent
+from astrbot.api import logger
+
+UNBLOCK_PERMISSION_BOT_ADMIN = "仅bot管理员"
+UNBLOCK_PERMISSION_GROUP_OWNER = "群主和bot管理员"
+UNBLOCK_PERMISSION_GROUP_ADMIN = "群主和群管理员和bot管理员"
 
 def is_group_allowed(event: AstrMessageEvent, config: dict) -> bool:
     """
@@ -28,3 +33,60 @@ def is_group_allowed(event: AstrMessageEvent, config: dict) -> bool:
         
     return True
 
+
+async def get_group_member_role(event: AstrMessageEvent, group_id: str, user_id: str) -> str:
+    """
+    获取群成员身份。aiocqhttp/NapCat 优先走协议端 API，失败时回退到事件原始数据。
+    """
+    if not group_id or not user_id:
+        return "member"
+
+    try:
+        if event.get_platform_name() == "aiocqhttp" and hasattr(event, "bot"):
+            ret = await event.bot.api.call_action(
+                "get_group_member_info",
+                group_id=group_id,
+                user_id=user_id,
+            )
+            data = ret.get("data", {}) if isinstance(ret, dict) else getattr(ret, "data", {})
+            role = data.get("role")
+            if role:
+                return str(role)
+    except Exception as e:
+        logger.warning(f"[Atri] 获取群成员身份失败，尝试使用事件原始数据: {e}")
+
+    try:
+        raw_message = getattr(event.message_obj, "raw_message", None)
+        if isinstance(raw_message, dict):
+            sender = raw_message.get("sender", {})
+            if str(raw_message.get("user_id", "")) == str(user_id):
+                return str(sender.get("role", "member"))
+    except Exception:
+        pass
+
+    return "member"
+
+
+async def can_use_unblock_command(event: AstrMessageEvent, config: dict) -> bool:
+    """
+    根据配置判断当前用户是否有权限使用解除拉黑指令。
+    """
+    if event.is_admin():
+        return True
+
+    mode = config.get("unblock_permission", UNBLOCK_PERMISSION_BOT_ADMIN)
+    if mode in {UNBLOCK_PERMISSION_BOT_ADMIN, "bot_admin"}:
+        return False
+
+    group_id = event.get_group_id()
+    if not group_id:
+        return False
+
+    role = await get_group_member_role(event, group_id, event.get_sender_id())
+    if mode in {UNBLOCK_PERMISSION_GROUP_OWNER, "group_owner_and_bot_admin"}:
+        return role == "owner"
+
+    if mode in {UNBLOCK_PERMISSION_GROUP_ADMIN, "group_admin_owner_and_bot_admin"}:
+        return role in {"owner", "admin"}
+
+    return False

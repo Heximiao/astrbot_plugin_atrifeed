@@ -30,6 +30,7 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         {"command": "开始巡礼", "description": "开始圣地巡礼的剧情（需要好感度到达300且需要机票）"},
         {"command": "继续前进", "description": "推进剧情"},
         {"command": "亚托莉我错了对不起", "description": "被拉黑道歉尝试恢复好感"},
+        {"command": "解除拉黑 <QQ号>", "description": "解除指定用户的拉黑状态（权限可配置）"},
     ]
 
     # 2. 路径处理

@@ -29,6 +29,7 @@ from .src.command.dice import run_dice_logic
 from .src.command.shopping import run_shop_logic
 from .src.command.backpack import run_backpack_logic
 from .src.command.use_item import run_use_item_logic
+from .src.command.unblock import run_unblock_logic
 
 from .src.story.story import StoryManager
 
@@ -407,6 +408,16 @@ class AtriPlugin(Star):
             self.apology_count
         ):
             yield result
+
+    @filter.command("解除拉黑")
+    async def unblock_user(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not is_group_allowed(event, conf):
+            return
+
+        async for result in run_unblock_logic(event, self.db, conf):
+            yield result
+        event.stop_event()
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("clear_feed_log")

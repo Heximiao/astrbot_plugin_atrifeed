@@ -162,8 +162,9 @@ astrbot_plugin_atrifeed/
 
 本项目的开发离不开以下开源项目与社区的支持：
 
-* **[AstrBot](https://github.com/Soulter/AstrBot)**：感谢 Soulter 提供的强大且易用的生态框架。
+* **[AstrBot](https://github.com/astrbotdevs/astrbot)**：感谢 Soulter 提供的强大且易用的生态框架。
 * **[星火燃愿]**：感谢星火燃愿提供的巡礼图片的处理支持
 * **[Furina010013](https://github.com/Furina010013)**:感谢提供的代码贡献支持
+* **[Bing2Na冰](https://space.bilibili.com/34884714?spm_id_from=333.788.upinfo.detail.click)**：感谢提供亚托莉桌宠的思路与素材
 
 觉得亚托莉可爱的话，就给个 star 吧 ❤️~

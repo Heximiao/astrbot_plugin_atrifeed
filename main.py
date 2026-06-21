@@ -140,7 +140,7 @@ class AtriPlugin(Star):
                 
                 event.stop_event()
 
-    @filter.event_message_type(filter.EventMessageType.ALL)
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     # 监听入群和退群消息
     async def on_group_member_change(self, event: AstrMessageEvent):
         await welcome_new_user(self,event)

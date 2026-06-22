@@ -79,7 +79,8 @@ class AnimationPlayer:
         if isinstance(self.action, str) or not self.action.frames:
             return
         frame = self.action.frames[self.frame_index % len(self.action.frames)]
-        key = (frame.image, self.window.facing)
+        mirrored = self._should_mirror_current_action()
+        key = (frame.image, mirrored)
         image = self.images.get(key)
         if image:
             self.window.set_image(image)
@@ -87,9 +88,14 @@ class AnimationPlayer:
         if not frame.image or not Path(frame.image).exists():
             return
         if not image:
-            image = self.window.load_image(frame.image, mirrored=self.window.facing > 0)
+            image = self.window.load_image(frame.image, mirrored=mirrored)
             self.images[key] = image
         self.window.set_image(image)
+
+    def _should_mirror_current_action(self):
+        if isinstance(self.action_name, str) and self.action_name.startswith("drag_"):
+            return False
+        return self.window.facing > 0
 
     def preload_all_images(self):
         for action in self.registry.xml_actions.values():

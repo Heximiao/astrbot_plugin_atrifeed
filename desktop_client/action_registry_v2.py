@@ -60,6 +60,7 @@ class ActionRegistry:
         self.asset_dir = Path(asset_dir)
         self.xml_actions = parse_actions(self.asset_dir)
         self.xml_behaviors = parse_behaviors(self.asset_dir)
+        self.drag_actions = self._build_drag_actions()
         self.custom_actions = {"jump", "sing"}
         self.fallback = self._build_fallback()
 
@@ -72,6 +73,8 @@ class ActionRegistry:
         )
 
     def resolve(self, name: str):
+        if name in self.drag_actions:
+            return self.drag_actions[name]
         if name in self.custom_actions:
             return name
         xml_name = ACTION_ALIASES.get(name, name)
@@ -95,6 +98,46 @@ class ActionRegistry:
         for name in self.available_ground_behaviors():
             choices[name] = max(choices.get(name, 0), self.xml_behaviors.get(name, 40))
         return choices
+
+    def _build_drag_actions(self) -> dict[str, Action]:
+        return {
+            "drag_hold": self._frames_action(
+                "drag_hold",
+                [
+                    "shime9.png",
+                    "shime7.png",
+                    "shime1.png",
+                    "shime8.png",
+                    "shime10.png",
+                    "shime10.png",
+                    "shime8.png",
+                    "shime1.png",
+                    "shime7.png",
+                    "shime9.png",
+                ],
+                duration=4,
+            ),
+            "drag_swing_left": self._frames_action("drag_swing_left", ["shime10.png"], duration=8),
+            "drag_swing_right": self._frames_action("drag_swing_right", ["shime9.png"], duration=8),
+            "drag_resist_left": self._frames_action("drag_resist_left", ["shime6.png"], duration=8),
+            "drag_resist_right": self._frames_action("drag_resist_right", ["shime5.png"], duration=8),
+        }
+
+    def _frames_action(self, name: str, images: list[str], duration: int = 6) -> Action:
+        return Action(
+            name=name,
+            type="\u56fa\u5b9a",
+            border="",
+            frames=[
+                Frame(
+                    image=str(self.asset_dir / image),
+                    anchor=(64, 128),
+                    velocity=(0, 0),
+                    duration=duration,
+                )
+                for image in images
+            ],
+        )
 
     def _build_fallback(self) -> Action:
         candidates = list(self.asset_dir.glob("shime*.png")) + list(self.asset_dir.glob("*.png"))

@@ -26,17 +26,6 @@ BEHAVIOR_WEIGHTS = {
     "angry": {"idle": 30, "walk": 10, "jump": 5, "sit": 10},
 }
 
-XML_GROUND_BEHAVIORS = {
-    "\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u3092\u6b69\u304f",
-    "\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u3092\u8d70\u308b",
-    "\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u3067\u305a\u308a\u305a\u308a",
-    "\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u306e\u5de6\u306e\u7aef\u3063\u3053\u3067\u5ea7\u308b",
-    "\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u306e\u53f3\u306e\u7aef\u3063\u3053\u3067\u5ea7\u308b",
-    "\u8d70\u3063\u3066\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u306e\u5de6\u306e\u7aef\u3063\u3053\u3067\u5ea7\u308b",
-    "\u8d70\u3063\u3066\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u306e\u53f3\u306e\u7aef\u3063\u3053\u3067\u5ea7\u308b",
-}
-
-
 def get_work_area_bottom():
     try:
         import ctypes
@@ -261,15 +250,21 @@ class PetWindow(tk.Tk):
             with urllib.request.urlopen(f"{self.chat_box.api_url}/pet/state", timeout=3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             self.mood = data.get("mood", self.mood)
-            self.player.play(data.get("recommended_action", "idle"))
+            if not self.drag_offset:
+                self.player.play(data.get("recommended_action", "idle"))
         except Exception:
             pass
         self.after(30000, self._fetch_state)
 
     def _schedule_behavior(self):
-        xml_weights = self.registry.behavior_choices(XML_GROUND_BEHAVIORS)
-        if xml_weights:
-            actions, values = zip(*xml_weights.items())
+        if self.drag_offset:
+            self.next_behavior_ms = 1000
+            self.after(self.next_behavior_ms, self._schedule_behavior)
+            return
+
+        ground_weights = self.registry.ground_choices()
+        if ground_weights:
+            actions, values = zip(*ground_weights.items())
             self.player.play(random.choices(actions, weights=values, k=1)[0])
             self.next_behavior_ms = random.randint(6000, 14000)
             self.after(self.next_behavior_ms, self._schedule_behavior)
@@ -283,6 +278,7 @@ class PetWindow(tk.Tk):
 
     def _start_drag(self, event):
         self.drag_offset = (event.x, event.y)
+        self.vy = 0
         self.player.play("drag")
 
     def _drag(self, event):

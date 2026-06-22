@@ -43,6 +43,12 @@
         "hint": "关闭后只检测严重关键词，不再使用贝叶斯模型判断。如果你要经常和bot聊天斗嘴，建议关闭以避免误伤。",
         "default": true
     },
+    "welcome_enabled": {
+        "type": "bool",
+        "description": "入群欢迎功能",
+        "hint": "开启则启用入群欢迎功能",
+        "default": false
+    },
     "desktop_pet_enabled": {
         "type": "bool",
         "description": "实验性桌宠模式",

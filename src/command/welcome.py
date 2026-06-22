@@ -1,6 +1,5 @@
 from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import Plain, Image, At
-import pathlib
+from astrbot.api.message_components import Plain, At
 import random
 async def welcome_new_user(plugin,event: AstrMessageEvent):
     atri_welcomes_extended = [
@@ -31,20 +30,8 @@ async def welcome_new_user(plugin,event: AstrMessageEvent):
     raw_msg = event.message_obj.raw_message
     if isinstance(raw_msg, dict) and raw_msg.get("notice_type") == "group_increase":
         user_id = str(raw_msg.get("user_id"))
-        html_path = pathlib.Path(__file__).parent.parent.parent / "template"/ "welcome.html"
-        TMPL = html_path.read_text(encoding="utf-8")
-        options={
-            "clip":{
-                "x":0,
-                "y":0,
-                "width":685,
-                "height":460,
-            }
-        }
-        url = await plugin.html_render(TMPL, {"user_id":user_id},options=options)
         chain=[
             At(qq=user_id),
             Plain(random.choice(atri_welcomes_extended)),
-            Image(url)
         ]
         await event.send(event.chain_result(chain))

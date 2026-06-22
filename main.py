@@ -143,6 +143,9 @@ class AtriPlugin(Star):
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     # 监听入群和退群消息
     async def on_group_member_change(self, event: AstrMessageEvent):
+        conf = self.config if self.config else (self.context.get_config() or {})
+        if not conf.get("welcome_enabled", False):
+            return
         await welcome_new_user(self,event)
 
     # --- 指令转发区域 ---

@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+from action_rules import apply_action_target_rules
 from shimeji_actions import TYPE_BUILTIN, TYPE_COMPOUND
 
 
@@ -14,6 +15,7 @@ class AnimationPlayer:
         self.registry = registry
         self.action_name = None
         self.action = registry.resolve("idle")
+        self.frames = []
         self.frame_index = 0
         self.last_tick = time.monotonic()
         self.images = {}
@@ -38,6 +40,13 @@ class AnimationPlayer:
         self.deadline = self._deadline_from(params)
         self.target_x = self.window.eval_action_value(params.get("\u76ee\u7684\u5730X"))
         self.target_y = self.window.eval_action_value(params.get("\u76ee\u7684\u5730Y"))
+        self.target_x, self.target_y = apply_action_target_rules(
+            self.action,
+            self.target_x,
+            self.target_y,
+            self.window.runtime,
+        )
+        condition_vars = {"\u76ee\u7684\u5730X": self.target_x, "\u76ee\u7684\u5730Y": self.target_y}
 
         if not isinstance(self.action, str) and self.action.type == TYPE_COMPOUND:
             self.queue = list(self.action.refs or [])
@@ -50,6 +59,7 @@ class AnimationPlayer:
             self._advance_queue()
             return
 
+        self.frames = self._select_frames(condition_vars)
         self.frame_index = 0
         self.last_tick = time.monotonic()
         self._preload_action_images()
@@ -58,7 +68,7 @@ class AnimationPlayer:
     def tick(self):
         if isinstance(self.action, str):
             return
-        frames = self.action.frames
+        frames = self.frames
         if not frames:
             return
         frame = frames[self.frame_index % len(frames)]
@@ -70,15 +80,15 @@ class AnimationPlayer:
             self.finish_current_ref()
 
     def current_velocity(self) -> tuple[int, int]:
-        if isinstance(self.action, str) or not self.action.frames:
+        if isinstance(self.action, str) or not self.frames:
             return 0, 0
-        frame = self.action.frames[self.frame_index % len(self.action.frames)]
+        frame = self.frames[self.frame_index % len(self.frames)]
         return frame.velocity
 
     def _show_current_frame(self):
-        if isinstance(self.action, str) or not self.action.frames:
+        if isinstance(self.action, str) or not self.frames:
             return
-        frame = self.action.frames[self.frame_index % len(self.action.frames)]
+        frame = self.frames[self.frame_index % len(self.frames)]
         mirrored = self._should_mirror_current_action()
         key = (frame.image, mirrored)
         image = self.images.get(key)
@@ -105,9 +115,9 @@ class AnimationPlayer:
                 self._preload_frame_image(frame.image)
 
     def _preload_action_images(self):
-        if isinstance(self.action, str) or not self.action.frames:
+        if isinstance(self.action, str) or not self.frames:
             return
-        for frame in self.action.frames:
+        for frame in self.frames:
             self._preload_frame_image(frame.image)
 
     def _preload_frame_image(self, image_path: str):
@@ -145,3 +155,11 @@ class AnimationPlayer:
     def _deadline_from(self, params: dict[str, str]):
         duration = self.window.eval_action_value(params.get("\u9577\u3055"))
         return time.monotonic() + duration / 20 if duration else None
+
+    def _select_frames(self, condition_vars: dict[str, float | None]):
+        if isinstance(self.action, str):
+            return []
+        for animation in self.action.animations or []:
+            if not animation.condition or self.window.eval_action_bool(animation.condition, variables=condition_vars):
+                return animation.frames
+        return self.action.frames

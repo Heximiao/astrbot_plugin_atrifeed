@@ -4,6 +4,8 @@ import xml.etree.ElementTree as ET
 
 
 TAG_ACTION = "\u52d5\u4f5c"
+TAG_ACTION_REF = "\u52d5\u4f5c\u53c2\u7167"
+TAG_BEHAVIOR = "\u884c\u52d5"
 TAG_POSE = "\u30dd\u30fc\u30ba"
 ATTR_NAME = "\u540d\u524d"
 ATTR_TYPE = "\u7a2e\u985e"
@@ -12,7 +14,10 @@ ATTR_IMAGE = "\u753b\u50cf"
 ATTR_ANCHOR = "\u57fa\u6e96\u5ea7\u6a19"
 ATTR_VELOCITY = "\u79fb\u52d5\u901f\u5ea6"
 ATTR_DURATION = "\u9577\u3055"
-SUPPORTED_TYPES = {"\u9759\u6b62", "\u79fb\u52d5", "\u56fa\u5b9a"}
+ATTR_FREQUENCY = "\u983b\u5ea6"
+TYPE_BUILTIN = "\u7d44\u307f\u8fbc\u307f"
+TYPE_COMPOUND = "\u8907\u5408"
+SUPPORTED_TYPES = {"\u9759\u6b62", "\u79fb\u52d5", "\u56fa\u5b9a", TYPE_BUILTIN, TYPE_COMPOUND}
 
 
 @dataclass
@@ -24,11 +29,18 @@ class Frame:
 
 
 @dataclass
+class ActionRef:
+    name: str
+    params: dict[str, str]
+
+
+@dataclass
 class Action:
     name: str
     type: str
     border: str
     frames: list[Frame]
+    refs: list[ActionRef] | None = None
 
 
 def _local_name(tag: str) -> str:
@@ -89,11 +101,42 @@ def parse_actions(asset_dir: str | Path) -> dict[str, Action]:
                     duration=max(1, _pair(_attr(pose, ATTR_DURATION, "Duration", default="6,0"), (6, 0))[0]),
                 )
             )
-        if frames:
+        refs = []
+        for child in node:
+            if _local_name(child.tag) != TAG_ACTION_REF:
+                continue
+            ref_name = _attr(child, ATTR_NAME, "Name")
+            if ref_name:
+                refs.append(ActionRef(name=ref_name, params=dict(child.attrib)))
+        if frames or refs or action_type == TYPE_BUILTIN:
             actions[name] = Action(
                 name=name,
                 type=action_type,
                 border=_attr(node, ATTR_BORDER, "Border"),
                 frames=frames,
+                refs=refs,
             )
     return actions
+
+
+def parse_behaviors(asset_dir: str | Path) -> dict[str, int]:
+    asset_dir = Path(asset_dir)
+    xml_path = asset_dir / "conf" / "Behavior.xml"
+    if not xml_path.exists():
+        return {}
+
+    root = ET.parse(xml_path).getroot()
+    behaviors: dict[str, int] = {}
+    for node in root.iter():
+        if _local_name(node.tag) != TAG_BEHAVIOR:
+            continue
+        name = _attr(node, ATTR_NAME, "Name")
+        if not name:
+            continue
+        try:
+            frequency = int(float(_attr(node, ATTR_FREQUENCY, "Frequency", default="0")))
+        except ValueError:
+            frequency = 0
+        if frequency > 0:
+            behaviors[name] = max(behaviors.get(name, 0), frequency)
+    return behaviors

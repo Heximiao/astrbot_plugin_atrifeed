@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from shimeji_actions import Action, Frame, parse_actions
+from shimeji_actions import Action, Frame, parse_actions, parse_behaviors
 
 ACTION_ALIASES = {
     "idle": "\u7acb\u3064",
@@ -18,6 +18,7 @@ class ActionRegistry:
     def __init__(self, asset_dir: str):
         self.asset_dir = Path(asset_dir)
         self.xml_actions = parse_actions(self.asset_dir)
+        self.xml_behaviors = parse_behaviors(self.asset_dir)
         self.custom_actions = {"jump", "fall", "drag", "sing"}
         self.fallback = self._build_fallback()
 
@@ -29,6 +30,13 @@ class ActionRegistry:
             return name
         xml_name = ACTION_ALIASES.get(name, name)
         return self.xml_actions.get(xml_name) or self.fallback
+
+    def behavior_choices(self, allowed: set[str]) -> dict[str, int]:
+        return {
+            name: frequency
+            for name, frequency in self.xml_behaviors.items()
+            if name in allowed and name in self.xml_actions
+        }
 
     def _build_fallback(self) -> Action:
         candidates = list(self.asset_dir.glob("shime*.png")) + list(self.asset_dir.glob("*.png"))

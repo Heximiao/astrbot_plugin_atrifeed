@@ -15,6 +15,12 @@ class MovementController:
     def __init__(self, window):
         self.window = window
 
+    def floor_y(self):
+        sh = self.window.winfo_screenheight()
+        h = max(self.window.winfo_height(), 96)
+        work_bottom = get_work_area_bottom()
+        return work_bottom - h - FLOOR_GAP if work_bottom else sh - h - FALLBACK_FLOOR_MARGIN
+
     def move(self):
         player = self.window.player
         action = player.action_name
@@ -22,10 +28,9 @@ class MovementController:
         if abs(self.window.move_x - real_x) > 2 or abs(self.window.move_y - real_y) > 2:
             self.window.move_x, self.window.move_y = float(real_x), float(real_y)
         x, y = self.window.move_x, self.window.move_y
-        sw, sh = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
-        w, h = max(self.window.winfo_width(), 96), max(self.window.winfo_height(), 96)
-        work_bottom = get_work_area_bottom()
-        bottom = work_bottom - h - FLOOR_GAP if work_bottom else sh - h - FALLBACK_FLOOR_MARGIN
+        sw = self.window.winfo_screenwidth()
+        w = max(self.window.winfo_width(), 96)
+        bottom = self.floor_y()
 
         if self._is_xml_move():
             self._move_from_xml_velocity(x, y, sw, w, bottom)
@@ -33,11 +38,13 @@ class MovementController:
             self.window.vy = -14
             player.play("fall")
         elif action == "fall":
+            target_y = self.window.fall_target_y if self.window.fall_target_y is not None else bottom
             self.window.vy += MOVE_SCALE
             y += self.window.vy * MOVE_SCALE
-            if y >= bottom:
-                y = bottom
+            if y >= target_y:
+                y = target_y
                 self.window.vy = 0
+                self.window.fall_target_y = None
                 player.play("idle")
             self.window.place_at(x, y)
         elif action == "climb":
@@ -83,7 +90,7 @@ class MovementController:
                 self.window.set_facing(-1)
 
         if action.border == BORDER_GROUND:
-            next_y = bottom
+            next_y = min(y, bottom)
         elif action.border == BORDER_CEILING:
             next_y = 0
         elif raw_vy:
@@ -94,6 +101,6 @@ class MovementController:
         elif target_y is not None and abs(target_y - y) <= 1:
             reached_y = True
 
-        self.window.place_at(max(0, min(sw - w, next_x)), next_y)
+        self.window.place_at(max(0, min(sw - w, next_x)), max(0, min(bottom, next_y)))
         if reached_x and reached_y:
             player.finish_current_ref()

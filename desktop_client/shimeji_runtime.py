@@ -6,6 +6,7 @@ from desktop_environment import get_work_area_bottom
 
 WALL_CLIMB_MARGIN = 64
 WALL_CLIMB_TOP_ZONE_RATIO = 1 / 3
+WALL_CLIMB_PREFERRED_CHANCE = 3 / 5
 
 
 class ShimejiRuntime:
@@ -73,9 +74,9 @@ class ShimejiRuntime:
     def wall_climb_target_y(self):
         _, anchor_y = self.current_anchor()
         work_bottom = get_work_area_bottom() or self.window.winfo_screenheight()
-        if anchor_y <= work_bottom * WALL_CLIMB_TOP_ZONE_RATIO:
-            return work_bottom - WALL_CLIMB_MARGIN
-        return WALL_CLIMB_MARGIN
+        in_bottom_third = anchor_y >= work_bottom * (1 - WALL_CLIMB_TOP_ZONE_RATIO)
+        up_chance = WALL_CLIMB_PREFERRED_CHANCE if in_bottom_third else 1 - WALL_CLIMB_PREFERRED_CHANCE
+        return WALL_CLIMB_MARGIN if random.random() < up_chance else work_bottom - WALL_CLIMB_MARGIN
 
     def _expression_env(self, variables: dict | None = None):
         sw, sh = self.window.winfo_screenwidth(), self.window.winfo_screenheight()

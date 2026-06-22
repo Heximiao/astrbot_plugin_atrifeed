@@ -1,7 +1,10 @@
+import random
 import time
 from pathlib import Path
 
 
+PARTIAL_DROP_MIN = 60
+PARTIAL_DROP_MAX = 160
 DRAG_STOP_TIMEOUT = 1.0
 DRAG_MIN_DELTA_X = 2
 DRAG_MIN_SAMPLE_TIME = 0.016
@@ -40,6 +43,7 @@ class DragController:
         self.mode_changed_at = now
         self.velocity_x = 0.0
         self.window.vy = 0
+        self.window.fall_target_y = None
         self._set_mode("held", now)
 
     def drag(self, event):
@@ -68,6 +72,12 @@ class DragController:
         self.last_moved_time = None
         self.mode = None
         self.velocity_x = 0.0
+        floor_y = self.window.movement.floor_y()
+        if self.window.move_y >= floor_y or random.random() < 0.5:
+            self.window.fall_target_y = floor_y
+        else:
+            drop = random.randint(PARTIAL_DROP_MIN, PARTIAL_DROP_MAX)
+            self.window.fall_target_y = min(self.window.move_y + drop, floor_y)
         self.window.player.play("fall")
 
     def settle_animation(self):

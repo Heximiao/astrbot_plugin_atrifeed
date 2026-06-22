@@ -41,6 +41,7 @@ class PetWindow(tk.Tk):
         self.movement = MovementController(self)
         self.drag = DragController(self)
         self.vy = 0
+        self.fall_target_y = None
         self.move_x = 100.0
         self.move_y = 300.0
         self.facing = -1

@@ -54,6 +54,27 @@ GROUND_BEHAVIORS = {
     "\u8d70\u3063\u3066\u30ef\u30fc\u30af\u30a8\u30ea\u30a2\u306e\u4e0b\u8fba\u304b\u3089\u53f3\u306e\u58c1\u306b\u3088\u3058\u306e\u307c\u308b",
 }
 
+DEFAULT_GROUND_ACTION_WEIGHT = 12
+DEFAULT_GROUND_BEHAVIOR_WEIGHT = 80
+GROUND_BEHAVIOR_WEIGHT_MULTIPLIER = 2
+ONE_SHOT_COOLDOWN_CHOICES = 8
+
+ONE_SHOT_ACTIONS = {
+    "\u5ea7\u3063\u3066\u9996\u304c\u56de\u308b",
+    "IE\u3092\u6295\u3052\u308b",
+    "\u8df3\u306d\u308b",
+    "\u8ee2\u3076",
+}
+
+GROUND_ACTION_WEIGHTS = {
+    "\u5ea7\u3063\u3066\u9996\u304c\u56de\u308b": 2,
+    "IE\u3092\u6295\u3052\u308b": 1,
+    "\u8df3\u306d\u308b": 12,
+    "\u8ee2\u3076": 2,
+    "\u731b\u30c0\u30c3\u30b7\u30e5": 8,
+    "\u305a\u308a\u305a\u308a": 24,
+}
+
 
 class ActionRegistry:
     def __init__(self, asset_dir: str):
@@ -63,6 +84,7 @@ class ActionRegistry:
         self.drag_actions = self._build_drag_actions()
         self.custom_actions = {"jump", "sing"}
         self.fallback = self._build_fallback()
+        self.one_shot_cooldowns = {}
 
     def names(self) -> list[str]:
         return sorted(
@@ -80,6 +102,15 @@ class ActionRegistry:
         xml_name = ACTION_ALIASES.get(name, name)
         return self.xml_actions.get(xml_name) or self.fallback
 
+    def is_one_shot(self, name: str) -> bool:
+        return ACTION_ALIASES.get(name, name) in ONE_SHOT_ACTIONS
+
+    def remember_played(self, name: str):
+        xml_name = ACTION_ALIASES.get(name, name)
+        if xml_name not in ONE_SHOT_ACTIONS:
+            return
+        self.one_shot_cooldowns[xml_name] = ONE_SHOT_COOLDOWN_CHOICES
+
     def behavior_choices(self, allowed: set[str]) -> dict[str, int]:
         return {
             name: frequency
@@ -94,10 +125,26 @@ class ActionRegistry:
         return {name for name in GROUND_BEHAVIORS if name in self.xml_actions}
 
     def ground_choices(self) -> dict[str, int]:
-        choices = {name: 40 for name in self.available_ground_actions()}
+        choices = {
+            name: GROUND_ACTION_WEIGHTS.get(name, DEFAULT_GROUND_ACTION_WEIGHT)
+            for name in self.available_ground_actions()
+            if self.one_shot_cooldowns.get(name, 0) <= 0
+        }
         for name in self.available_ground_behaviors():
-            choices[name] = max(choices.get(name, 0), self.xml_behaviors.get(name, 40))
+            choices[name] = max(
+                choices.get(name, 0),
+                self.xml_behaviors.get(name, DEFAULT_GROUND_BEHAVIOR_WEIGHT)
+                * GROUND_BEHAVIOR_WEIGHT_MULTIPLIER,
+            )
+        self._tick_one_shot_cooldowns()
         return choices
+
+    def _tick_one_shot_cooldowns(self):
+        self.one_shot_cooldowns = {
+            name: remaining - 1
+            for name, remaining in self.one_shot_cooldowns.items()
+            if remaining > 1
+        }
 
     def _build_drag_actions(self) -> dict[str, Action]:
         return {

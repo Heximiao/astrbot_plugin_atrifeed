@@ -47,6 +47,7 @@ class PetWindow(tk.Tk):
         self.facing = -1
         self.mood = "normal"
         self.next_behavior_ms = 5000
+        self.manual_action_locked = False
         self.bind("<ButtonPress-1>", self.drag.start)
         self.bind("<B1-Motion>", self.drag.drag)
         self.bind("<ButtonRelease-1>", self.drag.end)
@@ -149,7 +150,12 @@ class PetWindow(tk.Tk):
         self.after(self.next_behavior_ms, self._schedule_behavior)
 
     def _is_action_locked(self):
-        return self.drag.is_dragging or self.player.action_name in UNINTERRUPTIBLE_ACTIONS
+        return (
+            self.manual_action_locked
+            or self.drag.is_dragging
+            or self.player.in_compound
+            or self.player.action_name in UNINTERRUPTIBLE_ACTIONS
+        )
 
     def _open_chat(self, _=None):
         self.chat_box.open_near(self.winfo_x(), max(0, self.winfo_y() - 120))
@@ -157,11 +163,15 @@ class PetWindow(tk.Tk):
     def _menu(self, event):
         menu = tk.Menu(self, tearoff=False)
         for name in self.registry.names():
-            menu.add_command(label=name, command=lambda n=name: self.player.play(n))
+            menu.add_command(label=name, command=lambda n=name: self._play_manual_action(n))
         menu.add_separator()
         menu.add_command(label="聊天", command=self._open_chat)
         menu.add_command(label="退出", command=self.destroy)
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _play_manual_action(self, name: str):
+        self.manual_action_locked = True
+        self.player.play(name)
 
     def _on_reply(self, reply: str, action: str):
         self.player.play(action or "idle")

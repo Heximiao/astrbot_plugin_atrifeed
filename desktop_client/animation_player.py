@@ -62,6 +62,7 @@ class AnimationPlayer:
         self.frames = self._select_frames(condition_vars)
         self.frame_index = 0
         self.last_tick = time.monotonic()
+        self.registry.remember_played(name)
         self._preload_action_images()
         self._show_current_frame()
 
@@ -73,7 +74,11 @@ class AnimationPlayer:
             return
         frame = frames[self.frame_index % len(frames)]
         if time.monotonic() - self.last_tick >= frame.duration / 20:
-            self.frame_index = (self.frame_index + 1) % len(frames)
+            next_frame_index = self.frame_index + 1
+            if self._is_one_shot_finished(next_frame_index):
+                self.finish_current_ref()
+                return
+            self.frame_index = next_frame_index % len(frames)
             self.last_tick = time.monotonic()
             self._show_current_frame()
         if self.deadline and time.monotonic() >= self.deadline:
@@ -134,6 +139,8 @@ class AnimationPlayer:
     def finish_current_ref(self):
         if self.in_compound:
             self._advance_queue()
+        elif self.action_name != "idle":
+            self.play("idle")
 
     def _advance_queue(self):
         if not self.queue:
@@ -163,3 +170,6 @@ class AnimationPlayer:
             if not animation.condition or self.window.eval_action_bool(animation.condition, variables=condition_vars):
                 return animation.frames
         return self.action.frames
+
+    def _is_one_shot_finished(self, next_frame_index: int) -> bool:
+        return self.registry.is_one_shot(self.action_name) and next_frame_index >= len(self.frames)

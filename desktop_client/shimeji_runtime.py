@@ -1,7 +1,7 @@
 import random
 from types import SimpleNamespace
 
-from desktop_environment import get_work_area_bottom
+from desktop_environment import get_work_area_bottom, get_work_area_rect
 
 
 WALL_CLIMB_MARGIN = 64
@@ -73,15 +73,19 @@ class ShimejiRuntime:
 
     def wall_climb_target_y(self):
         _, anchor_y = self.current_anchor()
-        work_bottom = get_work_area_bottom() or self.window.winfo_screenheight()
-        in_bottom_third = anchor_y >= work_bottom * (1 - WALL_CLIMB_TOP_ZONE_RATIO)
+        work_area = self._work_area()
+        bottom_zone_top = work_area.top + work_area.height * (1 - WALL_CLIMB_TOP_ZONE_RATIO)
+        in_bottom_third = anchor_y >= bottom_zone_top
         up_chance = WALL_CLIMB_PREFERRED_CHANCE if in_bottom_third else 1 - WALL_CLIMB_PREFERRED_CHANCE
-        return WALL_CLIMB_MARGIN if random.random() < up_chance else work_bottom - WALL_CLIMB_MARGIN
+        return (
+            work_area.top + WALL_CLIMB_MARGIN
+            if random.random() < up_chance
+            else work_area.bottom - WALL_CLIMB_MARGIN
+        )
 
     def _expression_env(self, variables: dict | None = None):
         sw, sh = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
-        work_bottom = get_work_area_bottom() or sh
-        work_area = SimpleNamespace(left=0, top=0, right=sw, bottom=work_bottom, width=sw, height=work_bottom)
+        work_area = self._work_area()
         environment = SimpleNamespace(workArea=work_area, screen=SimpleNamespace(width=sw, height=sh))
         anchor_x, anchor_y = self.current_anchor()
         anchor = SimpleNamespace(x=anchor_x, y=anchor_y)
@@ -90,3 +94,14 @@ class ShimejiRuntime:
         if variables:
             env.update({key: value for key, value in variables.items() if value is not None})
         return env
+
+    def _work_area(self):
+        work_bottom = get_work_area_bottom(self.window) or self.window.winfo_screenheight()
+        return get_work_area_rect(self.window) or SimpleNamespace(
+            left=0,
+            top=0,
+            right=self.window.winfo_screenwidth(),
+            bottom=work_bottom,
+            width=self.window.winfo_screenwidth(),
+            height=work_bottom,
+        )

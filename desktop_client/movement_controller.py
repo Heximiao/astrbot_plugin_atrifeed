@@ -1,4 +1,6 @@
-from desktop_environment import get_work_area_bottom
+from types import SimpleNamespace
+
+from desktop_environment import get_work_area_bottom, get_work_area_rect
 
 
 FLOOR_GAP = 8
@@ -18,7 +20,7 @@ class MovementController:
     def floor_y(self):
         sh = self.window.winfo_screenheight()
         h = max(self.window.winfo_height(), 96)
-        work_bottom = get_work_area_bottom()
+        work_bottom = get_work_area_bottom(self.window)
         return work_bottom - h - FLOOR_GAP if work_bottom else sh - h - FALLBACK_FLOOR_MARGIN
 
     def move(self):
@@ -28,12 +30,11 @@ class MovementController:
         if abs(self.window.move_x - real_x) > 2 or abs(self.window.move_y - real_y) > 2:
             self.window.move_x, self.window.move_y = float(real_x), float(real_y)
         x, y = self.window.move_x, self.window.move_y
-        sw = self.window.winfo_screenwidth()
-        w = max(self.window.winfo_width(), 96)
+        work_area = self._work_area()
         bottom = self.floor_y()
 
         if self._is_xml_move():
-            self._move_from_xml_velocity(x, y, sw, w, bottom)
+            self._move_from_xml_velocity(x, y, work_area, bottom)
         elif action == "jump":
             self.window.vy = -14
             player.play("fall")
@@ -48,19 +49,28 @@ class MovementController:
                 player.play("idle")
             self.window.place_at(x, y)
         elif action == "climb":
-            edge_x = 0 if x < sw / 2 else sw - w
-            self.window.place_at(edge_x, max(0, y - 2 * MOVE_SCALE))
+            anchor_x, anchor_y = self.window.runtime.current_frame_anchor()
+            edge_x = (
+                work_area.left - anchor_x
+                if x < work_area.left + work_area.width / 2
+                else work_area.right - anchor_x
+            )
+            self.window.place_at(edge_x, max(work_area.top - anchor_y, y - 2 * MOVE_SCALE))
 
     def _is_xml_move(self):
         action = self.window.player.action
         return not isinstance(action, str) and action.type == TYPE_MOVE
 
-    def _move_from_xml_velocity(self, x: int, y: int, sw: int, w: int, bottom: int):
+    def _move_from_xml_velocity(self, x: int, y: int, work_area, bottom: int):
         player = self.window.player
         action = player.action
         raw_vx, raw_vy = player.current_velocity()
         target_x = self.window.runtime.window_target_x(player.target_x)
         target_y = self.window.runtime.window_target_y(player.target_y)
+        anchor_x, anchor_y = self.window.runtime.current_frame_anchor()
+        min_x = work_area.left - anchor_x
+        max_x = work_area.right - anchor_x
+        min_y = work_area.top - anchor_y
         next_x, next_y = x, y
         reached_x = target_x is None
         reached_y = target_y is None
@@ -76,23 +86,21 @@ class MovementController:
         elif target_x is not None and abs(target_x - x) <= 1:
             reached_x = True
 
-        if next_x <= 0:
-            next_x = 0
-            if target_x is not None and target_x <= 0:
+        if next_x <= min_x:
+            next_x = min_x
+            if target_x is not None and target_x <= min_x:
                 reached_x = True
-            if raw_vx < 0 or self.window.facing < 0:
-                self.window.set_facing(1)
-        elif next_x >= sw - w:
-            next_x = sw - w
-            if target_x is not None and target_x >= sw - w:
+            self.window.set_facing(-1)
+        elif next_x >= max_x:
+            next_x = max_x
+            if target_x is not None and target_x >= max_x:
                 reached_x = True
-            if raw_vx < 0 or self.window.facing > 0:
-                self.window.set_facing(-1)
+            self.window.set_facing(1)
 
         if action.border == BORDER_GROUND:
             next_y = min(y, bottom)
         elif action.border == BORDER_CEILING:
-            next_y = 0
+            next_y = min_y
         elif raw_vy:
             next_y = y + raw_vy * MOVE_SCALE
             if target_y is not None and ((raw_vy > 0 and next_y >= target_y) or (raw_vy < 0 and next_y <= target_y)):
@@ -101,6 +109,16 @@ class MovementController:
         elif target_y is not None and abs(target_y - y) <= 1:
             reached_y = True
 
-        self.window.place_at(max(0, min(sw - w, next_x)), max(0, min(bottom, next_y)))
+        self.window.place_at(max(min_x, min(max_x, next_x)), max(min_y, min(bottom, next_y)))
         if reached_x and reached_y:
             player.finish_current_ref()
+
+    def _work_area(self):
+        return get_work_area_rect(self.window) or SimpleNamespace(
+            left=0,
+            top=0,
+            right=self.window.winfo_screenwidth(),
+            bottom=self.window.winfo_screenheight(),
+            width=self.window.winfo_screenwidth(),
+            height=self.window.winfo_screenheight(),
+        )

@@ -53,11 +53,13 @@ class DesktopPetService:
             env["ATRI_PET_ASSET_DIR"] = str(ASSET_DIR)
             env["ATRI_PET_API"] = f"http://127.0.0.1:{api_port}"
             env["ATRI_PET_DEBUG_TRACE"] = "1" if conf.get("desktop_pet_debug_trace", False) else "0"
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
 
             log_path = Path(self.plugin.data_dir) / "desktop_pet_client.log"
             self.log_file = open(log_path, "ab")
             self.process = subprocess.Popen(
-                [sys.executable, str(client_entry)],
+                [sys.executable, "-X", "utf8", str(client_entry)],
                 cwd=str(curr_dir),
                 env=env,
                 stdout=self.log_file,

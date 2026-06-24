@@ -3,10 +3,6 @@ class DragController:
         self.window = window
         self.offset = None
 
-    @property
-    def is_dragging(self):
-        return self.offset is not None
-
     def start(self, event):
         self.offset = (event.x, event.y)
         self._update_cursor(event)
@@ -23,9 +19,6 @@ class DragController:
     def end(self, _):
         self.offset = None
         self.window.engine.on_mouse_release()
-
-    def settle_animation(self):
-        return
 
     def _update_cursor(self, event):
         cursor = self.window.runtime.environment_provider.cursor

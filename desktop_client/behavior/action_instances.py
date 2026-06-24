@@ -68,6 +68,21 @@ class BaseActionInstance:
             return default
         return str(value).strip().lower() == "true"
 
+    def param_float(self, *keys, default=None):
+        value = self.param_value(*keys, default=default)
+        if value in (None, ""):
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _animation_has_axis_motion(self, axis: int) -> bool:
+        animation = self._current_animation()
+        if animation is None:
+            return False
+        return any(frame.velocity[axis] != 0 for frame in animation.frames)
+
     def is_draggable(self) -> bool:
         return self.param_bool("Draggable", default=True)
 
@@ -129,8 +144,8 @@ class MoveActionInstance(BaseActionInstance):
         frame = self.current_frame()
         if frame is None:
             return
-        target_x = self.param_value("TargetX", default=None)
-        target_y = self.param_value("TargetY", default=None)
+        target_x = self.param_float("TargetX", default=None)
+        target_y = self.param_float("TargetY", default=None)
         anchor = self.engine.window.anchor_point()
         next_x = anchor.x
         next_y = anchor.y
@@ -146,7 +161,7 @@ class MoveActionInstance(BaseActionInstance):
                     next_x = float(target_x)
                 elif step_x < 0 and next_x <= target_x:
                     next_x = float(target_x)
-        elif target_x is not None and abs(target_x - anchor.x) <= 1:
+        elif target_x is not None and not self._animation_has_axis_motion(0):
             next_x = float(target_x)
         if self.definition.border in BORDER_GROUND:
             border = self.engine.window.runtime.environment_provider.floor_border()
@@ -161,10 +176,19 @@ class MoveActionInstance(BaseActionInstance):
             if hasattr(border, "x") and border.x is not None:
                 next_x = border.x
             next_y += vy * dt
+            if target_y is not None:
+                if vy == 0 and not self._animation_has_axis_motion(1):
+                    next_y = float(target_y)
+                elif vy > 0 and next_y >= target_y:
+                    next_y = float(target_y)
+                elif vy < 0 and next_y <= target_y:
+                    next_y = float(target_y)
         else:
             next_y += vy * dt
         if target_y is not None and self.definition.border not in BORDER_GROUND | BORDER_CEILING:
-            if vy > 0 and next_y >= target_y:
+            if vy == 0 and not self._animation_has_axis_motion(1):
+                next_y = float(target_y)
+            elif vy > 0 and next_y >= target_y:
                 next_y = float(target_y)
             elif vy < 0 and next_y <= target_y:
                 next_y = float(target_y)
@@ -176,11 +200,11 @@ class MoveActionInstance(BaseActionInstance):
         frame = self.current_frame()
         if frame is None:
             return False
-        target_x = self.param_value("TargetX", default=None)
-        target_y = self.param_value("TargetY", default=None)
+        target_x = self.param_float("TargetX", default=None)
+        target_y = self.param_float("TargetY", default=None)
         anchor = self.engine.window.anchor_point()
-        reached_x = target_x is None or abs(anchor.x - int(target_x)) <= 1
-        reached_y = target_y is None or abs(anchor.y - int(target_y)) <= 1
+        reached_x = target_x is None or abs(anchor.x - target_x) <= 1
+        reached_y = target_y is None or abs(anchor.y - target_y) <= 1
         return not (reached_x and reached_y)
 
 
@@ -193,17 +217,20 @@ class SequenceActionInstance(BaseActionInstance):
         self._advance()
 
     def _advance(self):
-        while self.current_index < len(self.definition.children):
+        attempts = 0
+        total = len(self.definition.children)
+        while attempts < total and total:
+            if self.current_index >= total:
+                if not self.loop:
+                    break
+                self.current_index = 0
             call = self.definition.children[self.current_index]
             child = self._child_from_call(call)
             if child is not None and child._is_effective():
                 self.current_child = child
                 return
             self.current_index += 1
-        if self.loop and self.definition.children:
-            self.current_index = 0
-            self._advance()
-            return
+            attempts += 1
         self.current_child = None
         self.finished = True
 
@@ -211,7 +238,8 @@ class SequenceActionInstance(BaseActionInstance):
         definition = call.inline_action or self.engine.config.actions.get(self.engine._resolve_name(call.action_name or ""))
         if definition is None:
             return None
-        merged = dict(call.params)
+        merged = dict(self.params)
+        merged.update(call.params)
         return self.engine._instantiate_action(definition, merged)
 
     def _tick(self):
@@ -287,8 +315,8 @@ class JumpActionInstance(BaseActionInstance):
         if frame:
             self.local_vars["VelocityX"] = 0
             self.local_vars["VelocityY"] = 0
-        target_x = int(self.param_value("TargetX", default=self.engine.window.anchor_point().x))
-        target_y = int(self.param_value("TargetY", default=self.engine.window.anchor_point().y))
+        target_x = float(self.param_value("TargetX", default=self.engine.window.anchor_point().x))
+        target_y = float(self.param_value("TargetY", default=self.engine.window.anchor_point().y))
         velocity = float(self.param_value("VelocityParam", default=20) or 20)
         anchor = self.engine.window.anchor_point()
         distance_x = target_x - anchor.x
@@ -299,11 +327,13 @@ class JumpActionInstance(BaseActionInstance):
         self.local_vars["VelocityX"] = vx
         self.local_vars["VelocityY"] = vy
         dt = self.engine.tick_scale
-        next_x = anchor.x + vx * dt
-        next_y = anchor.y + vy * dt
-        if abs(distance_x) <= velocity * dt and abs(distance_y) <= velocity * dt:
+        step = abs(velocity) * dt
+        if distance <= max(step, 0.001):
             next_x, next_y = target_x, target_y
             self.finished = True
+        else:
+            next_x = anchor.x + vx * dt
+            next_y = anchor.y + vy * dt
         if abs(target_x - anchor.x) > 1:
             self.engine.window.set_facing(1 if target_x > anchor.x else -1)
         self.engine.window.set_anchor(next_x, next_y)
@@ -348,9 +378,11 @@ class FallActionInstance(BaseActionInstance):
             )
 
             if dy > 0:
-                for offset in range(-80, 1):
+                for offset in range(0, -81, -1):
                     self.engine.window.set_anchor(x, y + offset)
                     if floor.isOn(self.engine.window.anchor_point()):
+                        if hasattr(floor, "y") and floor.y is not None:
+                            self.engine.window.set_anchor(x, floor.y)
                         landed = True
                         break
                 if landed:

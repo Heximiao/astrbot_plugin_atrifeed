@@ -99,7 +99,6 @@ class PetWindow(tk.Tk):
             self.drag.offset = None
 
     def _tick(self):
-        self.drag.settle_animation()
         self.engine.tick()
         self.after(TICK_MS, self._tick)
 
@@ -129,7 +128,7 @@ class PetWindow(tk.Tk):
         menu.tk_popup(event.x_root, event.y_root)
 
     def _play_manual_action(self, name: str):
-        self.engine.force_behavior(name)
+        self.engine.force_manual_command(name)
 
     def _on_reply(self, reply: str, action: str):
         self.engine.force_action(action or "idle")

@@ -27,8 +27,57 @@ class BaseBehaviorInstance:
     def mouse_released(self):
         return
 
-    def behavior_name(self) -> str | None:
-        return None
+    def _start_action(self, action: ActionDefinition, params: dict[str, object]):
+        self.engine.current_action = self.engine._instantiate_action(action, params)
+        self.engine.current_action_name = action.name
+        self.engine.window.current_action_name = action.name
+
+    def _tick_action(
+        self,
+        previous_name: str | None,
+        lost_ground_behavior: str | None,
+        forced: bool,
+        reset_drag_on_lost_ground: bool = False,
+    ):
+        self.engine._recover_if_out_of_bounds()
+        if self.engine.current_action is None:
+            self.engine._complete_behavior(previous_name, forced)
+            return
+        try:
+            finished = self.engine.current_action.tick()
+        except LostGroundError:
+            self.engine._trace().lost_ground(
+                self.engine.tick_count,
+                lost_ground_behavior,
+                self.engine.current_action_name,
+            )
+            if reset_drag_on_lost_ground:
+                self.engine.window.set_dragging(False)
+                self.engine.mascot_dragging = False
+            self.engine._fall_back()
+            return
+        self.engine._render_current_frame()
+        if finished:
+            self.engine._complete_behavior(previous_name, forced)
+
+    def _start_drag_behavior(self):
+        current_action = self.engine.current_action
+        if current_action is not None and not current_action.is_draggable():
+            self.engine.drag_active = False
+            return
+        dragged_name = self.engine._behavior_name("Dragged", "drag")
+        if dragged_name is not None:
+            self.engine._set_behavior(self.engine.config.behaviors[dragged_name], forced=True)
+            self.engine._trace().drag_start(self.engine.tick_count, dragged_name)
+        else:
+            self.engine.drag_active = False
+
+    def _throw_if_dragging(self):
+        if not self.engine.mascot_dragging:
+            return
+        thrown_name = self.engine._behavior_name("Thrown", "thrown")
+        if thrown_name is not None:
+            self.engine._set_behavior(self.engine.config.behaviors[thrown_name], forced=True)
 
 
 class UserBehaviorInstance(BaseBehaviorInstance):
@@ -38,51 +87,23 @@ class UserBehaviorInstance(BaseBehaviorInstance):
         self.action_definition = action
 
     def init(self):
-        self.engine.current_action = self.engine._instantiate_action(self.action_definition, self.definition.params)
-        self.engine.current_action_name = self.action_definition.name
-        self.engine.window.current_action_name = self.action_definition.name
+        self._start_action(self.action_definition, self.definition.params)
         if self.engine.current_action is not None and not self.engine.current_action._has_next():
             self.engine._complete_behavior(self.definition.name, self.forced)
 
     def next(self):
-        self.engine._recover_if_out_of_bounds()
-        if self.engine.current_action is None:
-            self.engine._complete_behavior(self.definition.name, self.forced)
-            return
-        try:
-            finished = self.engine.current_action.tick()
-        except LostGroundError:
-            self.engine._trace().lost_ground(
-                self.engine.tick_count,
-                self.definition.name,
-                self.engine.current_action_name,
-            )
-            self.engine.window.set_dragging(False)
-            self.engine.mascot_dragging = False
-            self.engine._fall_back()
-            return
-        self.engine._render_current_frame()
-        if finished:
-            self.engine._complete_behavior(self.definition.name, self.forced)
-
-    def behavior_name(self) -> str | None:
-        return self.definition.name
+        self._tick_action(
+            self.definition.name,
+            self.definition.name,
+            self.forced,
+            reset_drag_on_lost_ground=True,
+        )
 
     def mouse_pressed(self):
-        current_action = self.engine.current_action
-        if current_action is not None and not current_action.is_draggable():
-            return
-        dragged_name = self.engine._behavior_name("Dragged", "drag")
-        if dragged_name is not None:
-            self.engine._set_behavior(self.engine.config.behaviors[dragged_name], forced=True)
-            self.engine._trace().drag_start(self.engine.tick_count, dragged_name)
+        self._start_drag_behavior()
 
     def mouse_released(self):
-        if not self.engine.mascot_dragging:
-            return
-        thrown_name = self.engine._behavior_name("Thrown", "thrown")
-        if thrown_name is not None:
-            self.engine._set_behavior(self.engine.config.behaviors[thrown_name], forced=True)
+        self._throw_if_dragging()
 
 
 class ActionBehaviorInstance(BaseBehaviorInstance):
@@ -92,41 +113,13 @@ class ActionBehaviorInstance(BaseBehaviorInstance):
         self.params = params
 
     def init(self):
-        self.engine.current_action = self.engine._instantiate_action(self.action_definition, self.params)
-        self.engine.current_action_name = self.action_definition.name
-        self.engine.window.current_action_name = self.action_definition.name
+        self._start_action(self.action_definition, self.params)
 
     def next(self):
-        self.engine._recover_if_out_of_bounds()
-        if self.engine.current_action is None:
-            self.engine._complete_behavior(None, True)
-            return
-        try:
-            finished = self.engine.current_action.tick()
-        except LostGroundError:
-            self.engine._trace().lost_ground(
-                self.engine.tick_count,
-                None,
-                self.engine.current_action_name,
-            )
-            self.engine._fall_back()
-            return
-        self.engine._render_current_frame()
-        if finished:
-            self.engine._complete_behavior(None, True)
+        self._tick_action(None, None, True)
 
     def mouse_pressed(self):
-        current_action = self.engine.current_action
-        if current_action is not None and not current_action.is_draggable():
-            return
-        dragged_name = self.engine._behavior_name("Dragged", "drag")
-        if dragged_name is not None:
-            self.engine._set_behavior(self.engine.config.behaviors[dragged_name], forced=True)
-            self.engine._trace().drag_start(self.engine.tick_count, dragged_name)
+        self._start_drag_behavior()
 
     def mouse_released(self):
-        if not self.engine.mascot_dragging:
-            return
-        thrown_name = self.engine._behavior_name("Thrown", "thrown")
-        if thrown_name is not None:
-            self.engine._set_behavior(self.engine.config.behaviors[thrown_name], forced=True)
+        self._throw_if_dragging()

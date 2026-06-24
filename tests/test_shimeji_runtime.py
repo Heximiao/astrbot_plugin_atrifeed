@@ -261,11 +261,17 @@ class MoveBorderSnapTests(unittest.TestCase):
         self._run_move("Ceiling", rect.bottomBorder, anchor)
         self.assertEqual(anchor["y"], 400)
 
-    def test_active_window_left_wall_snaps_to_left_not_right(self):
+    def test_active_window_left_wall_snaps_to_left_when_facing_left(self):
         rect = Rect(left=200, top=100, right=600, bottom=400)
         anchor = {"x": 200, "y": 250}
-        self._run_move("Wall", rect.leftBorder, anchor, facing=1)
+        self._run_move("Wall", rect.leftBorder, anchor, facing=-1)
         self.assertEqual(anchor["x"], 200)
+
+    def test_active_window_right_wall_snaps_to_right_when_facing_right(self):
+        rect = Rect(left=200, top=100, right=600, bottom=400)
+        anchor = {"x": 600, "y": 250}
+        self._run_move("Wall", rect.rightBorder, anchor, facing=1)
+        self.assertEqual(anchor["x"], 600)
 
 
 class ExpressionTests(unittest.TestCase):

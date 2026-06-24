@@ -24,6 +24,7 @@ from behavior.constants import LEGACY_NAME_MAP, MISSING, TICK_MS, TICK_SCALE
 from behavior.param_normalizer import normalize_params
 from behavior.types import CandidateRef
 from debug_trace import DebugTrace
+from manual_commands import ManualCommandController
 from override_controller import OverrideController
 from shimeji_actions import (
     TYPE_ANIMATE,
@@ -44,6 +45,7 @@ class BehaviorEngine:
         self.config: ShimejiConfiguration = parse_configuration(asset_dir)
         self.debug_trace = DebugTrace(debug_trace_enabled)
         self.override_controller = OverrideController()
+        self.manual_commands = ManualCommandController(self)
         self.images: dict[tuple[str, bool], object] = {}
         self.tick_count = 0
         self.current_behavior: BehaviorDefinition | None = None
@@ -109,6 +111,9 @@ class BehaviorEngine:
         resolved = self._resolve_name(name)
         self._trace().forced_action(self.tick_count, resolved)
         self.override_controller.push_action(resolved)
+
+    def force_manual_command(self, name: str):
+        self.manual_commands.force(name)
 
     def on_mouse_press(self):
         self.drag_active = True

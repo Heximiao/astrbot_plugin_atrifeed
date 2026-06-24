@@ -4,6 +4,22 @@ from types import SimpleNamespace
 
 
 BORDER_TOLERANCE = 6
+GA_ROOT = 2
+GW_HWNDNEXT = 2
+SYSTEM_WINDOW_TITLES = {
+    "Program Manager",
+    "Windows 输入体验",
+    "Windows Input Experience",
+}
+
+
+class _RECT(ctypes.Structure):
+    _fields_ = [
+        ("left", ctypes.c_long),
+        ("top", ctypes.c_long),
+        ("right", ctypes.c_long),
+        ("bottom", ctypes.c_long),
+    ]
 
 
 @dataclass
@@ -123,7 +139,13 @@ class EnvironmentProvider:
         )
         cursor = get_cursor_state(self.cursor)
         self.cursor = cursor
-        self.active_ie, self.active_ie_title = get_active_window_rect()
+        active_ie, active_ie_title = get_active_window_rect(self.window)
+        if self._is_usable_active_window(active_ie, active_ie_title):
+            self.active_ie = active_ie
+            self.active_ie_title = active_ie_title
+        elif not self.active_ie.visible:
+            self.active_ie = Rect()
+            self.active_ie_title = ""
 
     def mascot_environment(self):
         return SimpleNamespace(
@@ -188,6 +210,13 @@ class EnvironmentProvider:
             and (anchor.x <= self.work_area.left + BORDER_TOLERANCE or anchor.x >= self.work_area.right - BORDER_TOLERANCE)
         )
 
+    def _is_usable_active_window(self, rect: Rect, title: str) -> bool:
+        if not rect.visible:
+            return False
+        if not title:
+            return False
+        return not _matches_window_rect(self.window, rect)
+
 
 def get_work_area_rect(window=None):
     work_area = _get_window_monitor_work_area(window)
@@ -227,28 +256,15 @@ def get_cursor_state(previous: PointState | None = None) -> PointState:
     return previous or PointState()
 
 
-def get_active_window_rect() -> tuple[Rect, str]:
+def get_active_window_rect(window=None) -> tuple[Rect, str]:
     try:
-        class RECT(ctypes.Structure):
-            _fields_ = [
-                ("left", ctypes.c_long),
-                ("top", ctypes.c_long),
-                ("right", ctypes.c_long),
-                ("bottom", ctypes.c_long),
-            ]
-
         user32 = ctypes.windll.user32
-        hwnd = user32.GetForegroundWindow()
-        if not hwnd:
-            return Rect(), ""
-        rect = RECT()
-        if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-            return Rect(), ""
-        title = ctypes.create_unicode_buffer(512)
-        user32.GetWindowTextW(hwnd, title, len(title))
-        return _rect_from_raw(rect), title.value
+        nearest = _find_nearest_active_window(user32, window)
+        if nearest is not None:
+            return nearest
     except Exception:
-        return Rect(), ""
+        pass
+    return Rect(), ""
 
 
 def _get_window_monitor_work_area(window):
@@ -257,6 +273,134 @@ def _get_window_monitor_work_area(window):
 
 def _get_window_monitor_rect(window):
     return _monitor_rect(window, work_area=False)
+
+
+def _is_own_window(window, hwnd) -> bool:
+    if window is None:
+        return False
+    try:
+        own_hwnd = int(window.winfo_id())
+        if int(hwnd) == own_hwnd:
+            return True
+        user32 = ctypes.windll.user32
+        root_hwnd = user32.GetAncestor(ctypes.c_void_p(int(hwnd)), GA_ROOT)
+        return bool(root_hwnd and int(root_hwnd) == own_hwnd)
+    except Exception:
+        return False
+
+
+def _active_window_from_hwnd(user32, hwnd, window) -> tuple[Rect, str] | None:
+    if not hwnd or _is_own_window(window, hwnd):
+        return None
+    if not user32.IsWindowVisible(ctypes.c_void_p(int(hwnd))):
+        return None
+    if hasattr(user32, "IsIconic") and user32.IsIconic(ctypes.c_void_p(int(hwnd))):
+        return None
+    if hasattr(user32, "IsZoomed") and user32.IsZoomed(ctypes.c_void_p(int(hwnd))):
+        return None
+    length = user32.GetWindowTextLengthW(ctypes.c_void_p(int(hwnd)))
+    if length <= 0:
+        return None
+    title = ctypes.create_unicode_buffer(length + 1)
+    user32.GetWindowTextW(ctypes.c_void_p(int(hwnd)), title, len(title))
+    if _is_system_window_title(title.value):
+        return None
+    rect = _RECT()
+    if not user32.GetWindowRect(ctypes.c_void_p(int(hwnd)), ctypes.byref(rect)):
+        return None
+    parsed = _rect_from_raw(rect)
+    if not parsed.visible or _matches_window_rect(window, parsed):
+        return None
+    if _is_desktop_sized_window(window, parsed):
+        return None
+    return parsed, title.value
+
+
+def _find_next_active_window(user32, hwnd, window) -> tuple[Rect, str] | None:
+    if hwnd:
+        candidate = user32.GetWindow(ctypes.c_void_p(int(hwnd)), GW_HWNDNEXT)
+    else:
+        candidate = user32.GetTopWindow(None)
+    for _ in range(100):
+        if not candidate:
+            return None
+        active = _active_window_from_hwnd(user32, candidate, window)
+        if active is not None:
+            return active
+        candidate = user32.GetWindow(ctypes.c_void_p(int(candidate)), GW_HWNDNEXT)
+    return None
+
+
+def _find_nearest_active_window(user32, window) -> tuple[Rect, str] | None:
+    candidates: list[tuple[int, tuple[Rect, str]]] = []
+
+    callback_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+    def callback(hwnd, _data):
+        active = _active_window_from_hwnd(user32, hwnd, window)
+        if active is not None:
+            candidates.append((_active_window_score(window, active[0]), active))
+        return True
+
+    if not user32.EnumWindows(callback_type(callback), None):
+        return None
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0])
+    return candidates[0][1]
+
+
+def _active_window_score(window, rect: Rect) -> int:
+    if window is None:
+        return 0
+    try:
+        point = window.anchor_point()
+        x = int(point.x)
+        y = int(point.y)
+    except Exception:
+        return 0
+    dx = 0
+    if x < rect.left:
+        dx = rect.left - x
+    elif x > rect.right:
+        dx = x - rect.right
+    dy = 0
+    if y < rect.top:
+        dy = rect.top - y
+    elif y > rect.bottom:
+        dy = y - rect.bottom
+    return dx * dx + dy * dy
+
+
+def _is_system_window_title(title: str) -> bool:
+    return title.strip() in SYSTEM_WINDOW_TITLES
+
+
+def _is_desktop_sized_window(window, rect: Rect) -> bool:
+    screen = get_screen_rect(window)
+    if screen is None or not screen.visible:
+        return False
+    covers_width = rect.left <= screen.left + BORDER_TOLERANCE and rect.right >= screen.right - BORDER_TOLERANCE
+    covers_height = rect.top <= screen.top + BORDER_TOLERANCE and rect.bottom >= screen.bottom - BORDER_TOLERANCE
+    return covers_width and covers_height
+
+
+def _matches_window_rect(window, rect: Rect) -> bool:
+    if window is None:
+        return False
+    try:
+        left = int(window.winfo_rootx())
+        top = int(window.winfo_rooty())
+        right = left + int(window.winfo_width())
+        bottom = top + int(window.winfo_height())
+    except Exception:
+        return False
+    return (
+        abs(rect.left - left) <= BORDER_TOLERANCE
+        and abs(rect.top - top) <= BORDER_TOLERANCE
+        and abs(rect.right - right) <= BORDER_TOLERANCE
+        and abs(rect.bottom - bottom) <= BORDER_TOLERANCE
+    )
 
 
 def _monitor_rect(window, work_area: bool):

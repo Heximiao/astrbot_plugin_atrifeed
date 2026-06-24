@@ -26,6 +26,3 @@ class OverrideController:
         best = max(self._queue, key=lambda item: item.priority)
         self._queue.remove(best)
         return best
-
-    def clear(self):
-        self._queue.clear()

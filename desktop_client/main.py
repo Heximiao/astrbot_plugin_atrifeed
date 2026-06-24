@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pet_window_v2 import PetWindow
+from pet_window_engine import PetWindow
 
 
 def main():

@@ -13,6 +13,9 @@ class PetState:
     last_feed_time: int | None
     mood: str
     recommended_action: str
+    forced_behavior: str | None
+    forced_action: str | None
+    state_vars: dict
     inventory: list[dict]
 
     def as_dict(self) -> dict:
@@ -26,6 +29,9 @@ class PetState:
             "last_feed_time": self.last_feed_time,
             "mood": self.mood,
             "recommended_action": self.recommended_action,
+            "forced_behavior": self.forced_behavior,
+            "forced_action": self.forced_action,
+            "state_vars": self.state_vars,
             "inventory": self.inventory,
         }
 
@@ -106,5 +112,15 @@ def get_pet_state(db, user_id: str, group_id: str | None = None) -> PetState:
         last_feed_time=last_feed_time,
         mood=mood,
         recommended_action=action_from_mood(mood, int(stamina)),
+        forced_behavior=None,
+        forced_action=None,
+        state_vars={
+            "favorability": int(favorability),
+            "stamina": int(stamina),
+            "mood": mood,
+            "crab_coin": int(crab_coin),
+            "is_blocked": bool(is_blocked),
+            "last_feed_time": last_feed_time,
+        },
         inventory=inventory,
     )

@@ -52,6 +52,11 @@ class UserBehaviorInstance(BaseBehaviorInstance):
         try:
             finished = self.engine.current_action.tick()
         except LostGroundError:
+            self.engine._trace().lost_ground(
+                self.engine.tick_count,
+                self.definition.name,
+                self.engine.current_action_name,
+            )
             self.engine.window.set_dragging(False)
             self.engine.mascot_dragging = False
             self.engine._fall_back()
@@ -70,6 +75,7 @@ class UserBehaviorInstance(BaseBehaviorInstance):
         dragged_name = self.engine._behavior_name("Dragged", "drag")
         if dragged_name is not None:
             self.engine._set_behavior(self.engine.config.behaviors[dragged_name], forced=True)
+            self.engine._trace().drag_start(self.engine.tick_count, dragged_name)
 
     def mouse_released(self):
         if not self.engine.mascot_dragging:
@@ -98,6 +104,11 @@ class ActionBehaviorInstance(BaseBehaviorInstance):
         try:
             finished = self.engine.current_action.tick()
         except LostGroundError:
+            self.engine._trace().lost_ground(
+                self.engine.tick_count,
+                None,
+                self.engine.current_action_name,
+            )
             self.engine._fall_back()
             return
         self.engine._render_current_frame()
@@ -111,6 +122,7 @@ class ActionBehaviorInstance(BaseBehaviorInstance):
         dragged_name = self.engine._behavior_name("Dragged", "drag")
         if dragged_name is not None:
             self.engine._set_behavior(self.engine.config.behaviors[dragged_name], forced=True)
+            self.engine._trace().drag_start(self.engine.tick_count, dragged_name)
 
     def mouse_released(self):
         if not self.engine.mascot_dragging:

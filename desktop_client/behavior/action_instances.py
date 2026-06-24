@@ -69,10 +69,10 @@ class BaseActionInstance:
         return str(value).strip().lower() == "true"
 
     def is_draggable(self) -> bool:
-        return self.param_bool("ドラッグ可能", "Draggable", default=True)
+        return self.param_bool("Draggable", default=True)
 
     def _is_effective(self) -> bool:
-        condition = self.param_value("条件", "Condition", default=True)
+        condition = self.param_value("Condition", default=True)
         if isinstance(condition, bool):
             return condition
         if condition in (None, ""):
@@ -81,7 +81,7 @@ class BaseActionInstance:
         return self.engine.window.runtime.eval_bool(condition, default=True, variables=scope)
 
     def _has_next(self) -> bool:
-        duration = self.param_value("長さ", "Duration", default=None)
+        duration = self.param_value("Duration", default=None)
         if isinstance(duration, (int, float)) and duration >= 0:
             return self.elapsed() < int(duration)
         return True
@@ -129,8 +129,8 @@ class MoveActionInstance(BaseActionInstance):
         frame = self.current_frame()
         if frame is None:
             return
-        target_x = self.param_value("目的地X", "TargetX", default=None)
-        target_y = self.param_value("目的地Y", "TargetY", default=None)
+        target_x = self.param_value("TargetX", default=None)
+        target_y = self.param_value("TargetY", default=None)
         anchor = self.engine.window.anchor_point()
         next_x = anchor.x
         next_y = anchor.y
@@ -176,8 +176,8 @@ class MoveActionInstance(BaseActionInstance):
         frame = self.current_frame()
         if frame is None:
             return False
-        target_x = self.param_value("目的地X", "TargetX", default=None)
-        target_y = self.param_value("目的地Y", "TargetY", default=None)
+        target_x = self.param_value("TargetX", default=None)
+        target_y = self.param_value("TargetY", default=None)
         anchor = self.engine.window.anchor_point()
         reached_x = target_x is None or abs(anchor.x - int(target_x)) <= 1
         reached_y = target_y is None or abs(anchor.y - int(target_y)) <= 1
@@ -189,7 +189,7 @@ class SequenceActionInstance(BaseActionInstance):
         super().__init__(engine, definition, params)
         self.current_index = 0
         self.current_child = None
-        self.loop = self.param_bool("繰り返し", "Loop", default=False)
+        self.loop = self.param_bool("Loop", default=False)
         self._advance()
 
     def _advance(self):
@@ -264,7 +264,7 @@ class SelectActionInstance(SequenceActionInstance):
 
 class LookActionInstance(BaseActionInstance):
     def _tick(self):
-        value = self.param_value("右向き", "LookRight", default=None)
+        value = self.param_value("LookRight", default=None)
         if value is None:
             self.engine.window.set_facing(-self.engine.window.facing)
         else:
@@ -287,8 +287,8 @@ class JumpActionInstance(BaseActionInstance):
         if frame:
             self.local_vars["VelocityX"] = 0
             self.local_vars["VelocityY"] = 0
-        target_x = int(self.param_value("目的地X", "TargetX", default=self.engine.window.anchor_point().x))
-        target_y = int(self.param_value("目的地Y", "TargetY", default=self.engine.window.anchor_point().y))
+        target_x = int(self.param_value("TargetX", default=self.engine.window.anchor_point().x))
+        target_y = int(self.param_value("TargetY", default=self.engine.window.anchor_point().y))
         velocity = float(self.param_value("VelocityParam", default=20) or 20)
         anchor = self.engine.window.anchor_point()
         distance_x = target_x - anchor.x
@@ -315,13 +315,13 @@ class JumpActionInstance(BaseActionInstance):
 class FallActionInstance(BaseActionInstance):
     def __init__(self, engine: "BehaviorEngine", definition: ActionDefinition, params: dict[str, str]):
         super().__init__(engine, definition, params)
-        self.vx = float(self.param_value("初速X", "InitialVX", default=0) or 0)
-        self.vy = float(self.param_value("初速Y", "InitialVY", default=0) or 0)
+        self.vx = float(self.param_value("InitialVX", default=0) or 0)
+        self.vy = float(self.param_value("InitialVY", default=0) or 0)
 
     def _tick(self):
-        gravity = float(self.param_value("重力", "Gravity", default=2) or 2)
-        resistance_x = float(self.param_value("空気抵抗X", "ResistanceX", "RegistanceX", default=0.05) or 0.05)
-        resistance_y = float(self.param_value("空気抵抗Y", "ResistanceY", "RegistanceY", default=0.1) or 0.1)
+        gravity = float(self.param_value("Gravity", default=2) or 2)
+        resistance_x = float(self.param_value("ResistanceX", default=0.05) or 0.05)
+        resistance_y = float(self.param_value("ResistanceY", default=0.1) or 0.1)
         dt = self.engine.tick_scale
         self.vx -= self.vx * resistance_x * dt
         self.vy -= self.vy * resistance_y * dt

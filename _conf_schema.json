@@ -54,5 +54,11 @@
         "description": "实验性桌宠模式",
         "hint": "开启后尝试在运行 AstrBot 的本机启动 ATRI 桌宠客户端。仅适用于有桌面环境的 Windows 本机，服务器/容器环境可能无法显示。",
         "default": false
+    },
+    "desktop_pet_debug_trace": {
+        "type": "bool",
+        "description": "桌宠行为调试日志",
+        "hint": "默认关闭。开启后桌宠客户端会记录行为切换、动作切换、强制行为/动作、LostGround、fallback fall 和拖拽开始/结束，方便定位 Shimeji 行为层问题。",
+        "default": false
     }
 }

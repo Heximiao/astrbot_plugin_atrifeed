@@ -12,7 +12,7 @@ ALPHA_VISIBLE_THRESHOLD = 36
 
 
 class PetWindow(tk.Tk):
-    def __init__(self, asset_dir: str, api_url: str):
+    def __init__(self, asset_dir: str, api_url: str, debug_trace_enabled: bool = False):
         super().__init__()
         self.label = tk.Label(self, bd=0, bg=TRANSPARENT_COLOR)
         self.label.pack()
@@ -34,7 +34,7 @@ class PetWindow(tk.Tk):
         self.current_action_name = ""
         self.runtime = ShimejiRuntime(self)
         self.drag = DragController(self)
-        self.engine = BehaviorEngine(self, asset_dir)
+        self.engine = BehaviorEngine(self, asset_dir, debug_trace_enabled=debug_trace_enabled)
 
         self.bind("<ButtonPress-1>", self.drag.start)
         self.bind("<B1-Motion>", self.drag.drag)

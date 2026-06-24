@@ -19,8 +19,11 @@ class DesktopPetService:
         self.api = None
         self.log_file = None
 
+    def _get_config(self) -> dict:
+        return self.plugin.config if self.plugin.config else (self.plugin.context.get_config() or {})
+
     def start_if_enabled(self):
-        conf = self.plugin.config if self.plugin.config else (self.plugin.context.get_config() or {})
+        conf = self._get_config()
         if not conf.get("desktop_pet_enabled", False):
             return
         self.start()
@@ -43,11 +46,13 @@ class DesktopPetService:
             return
 
         try:
+            conf = self._get_config()
             self.api = PetApiServer(self.plugin)
             api_port = self.api.start()
             env = os.environ.copy()
             env["ATRI_PET_ASSET_DIR"] = str(ASSET_DIR)
             env["ATRI_PET_API"] = f"http://127.0.0.1:{api_port}"
+            env["ATRI_PET_DEBUG_TRACE"] = "1" if conf.get("desktop_pet_debug_trace", False) else "0"
 
             log_path = Path(self.plugin.data_dir) / "desktop_pet_client.log"
             self.log_file = open(log_path, "ab")

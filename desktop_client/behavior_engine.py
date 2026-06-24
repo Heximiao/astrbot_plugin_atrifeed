@@ -21,7 +21,9 @@ from behavior.behavior_instances import (
     UserBehaviorInstance,
 )
 from behavior.constants import LEGACY_NAME_MAP, MISSING, TICK_MS, TICK_SCALE
+from behavior.param_normalizer import normalize_params
 from behavior.types import CandidateRef
+from debug_trace import DebugTrace
 from override_controller import OverrideController
 from shimeji_actions import (
     TYPE_ANIMATE,
@@ -37,9 +39,10 @@ from shimeji_actions import (
 
 
 class BehaviorEngine:
-    def __init__(self, window, asset_dir: str):
+    def __init__(self, window, asset_dir: str, debug_trace_enabled: bool = False):
         self.window = window
         self.config: ShimejiConfiguration = parse_configuration(asset_dir)
+        self.debug_trace = DebugTrace(debug_trace_enabled)
         self.override_controller = OverrideController()
         self.images: dict[tuple[str, bool], object] = {}
         self.tick_count = 0
@@ -49,12 +52,20 @@ class BehaviorEngine:
         self.current_action_name = ""
         self.current_frame = None
         self.current_forced = False
+        self._last_traced_action = ""
         self.drag_active = False
         self.mascot_dragging = False
         self.tick_scale = TICK_SCALE
         self.disabled_behaviors: set[str] = set()
         self.window.current_action_name = ""
         self._seed_initial_position()
+
+    def _trace(self) -> DebugTrace:
+        trace = getattr(self, "debug_trace", None)
+        if trace is None:
+            trace = DebugTrace(False)
+            self.debug_trace = trace
+        return trace
 
     def preload_all_images(self):
         for action in self.config.actions.values():
@@ -75,8 +86,10 @@ class BehaviorEngine:
         forced_behavior = state.get("forced_behavior")
         forced_action = state.get("forced_action")
         if forced_behavior:
+            self._trace().forced_behavior(self.tick_count, str(forced_behavior))
             self.override_controller.push_behavior(str(forced_behavior))
         if forced_action:
+            self._trace().forced_action(self.tick_count, str(forced_action))
             self.override_controller.push_action(str(forced_action))
 
     def available_commands(self) -> list[str]:
@@ -86,12 +99,15 @@ class BehaviorEngine:
     def force_behavior(self, name: str):
         resolved = self._resolve_name(name)
         if resolved in self.config.behaviors:
+            self._trace().forced_behavior(self.tick_count, resolved)
             self.override_controller.push_behavior(resolved)
         elif resolved in self.config.actions:
+            self._trace().forced_action(self.tick_count, resolved)
             self.override_controller.push_action(resolved)
 
     def force_action(self, name: str):
         resolved = self._resolve_name(name)
+        self._trace().forced_action(self.tick_count, resolved)
         self.override_controller.push_action(resolved)
 
     def on_mouse_press(self):
@@ -101,11 +117,13 @@ class BehaviorEngine:
             instance.mouse_pressed()
 
     def on_mouse_release(self):
+        was_dragging = self.mascot_dragging
         self.drag_active = False
         self.window.set_dragging(False)
         instance = getattr(self, "current_behavior_instance", None)
         if instance is not None:
             instance.mouse_released()
+        self._trace().drag_end(self.tick_count, bool(was_dragging))
 
     def sync_drag_to_cursor(self):
         if not self.drag_active or self.current_action is None:
@@ -135,6 +153,7 @@ class BehaviorEngine:
                 return
 
         self.current_behavior_instance.next()
+        self._trace_action_if_changed()
 
     def current_frame_anchor(self):
         if self.current_frame:
@@ -181,6 +200,8 @@ class BehaviorEngine:
         self.window.current_action_name = ""
         self.current_behavior_instance = UserBehaviorInstance(self, behavior, action, forced=forced)
         self.current_behavior_instance.init()
+        self._trace().behavior_switch(self.tick_count, behavior.name, forced)
+        self._trace_action_if_changed(force=True)
 
     def _set_action_behavior(self, action: ActionDefinition, params: dict[str, object] | None = None):
         self.current_behavior = None
@@ -191,6 +212,8 @@ class BehaviorEngine:
         self.window.current_action_name = ""
         self.current_behavior_instance = ActionBehaviorInstance(self, action, params or {})
         self.current_behavior_instance.init()
+        self._trace().behavior_switch(self.tick_count, None, True)
+        self._trace_action_if_changed(force=True)
 
     def _complete_behavior(self, previous_name: str | None, forced: bool):
         self.current_behavior = None
@@ -201,6 +224,7 @@ class BehaviorEngine:
         self.window.current_action_name = ""
         self.mascot_dragging = False
         self.current_forced = False
+        self._last_traced_action = ""
         self._select_next_behavior(None if forced else previous_name)
 
     def _behavior_name(self, *names: str) -> str | None:
@@ -306,6 +330,15 @@ class BehaviorEngine:
             action = action.current_child
         return action
 
+    def _trace_action_if_changed(self, force: bool = False):
+        action = self.current_action
+        if action is not None:
+            action = self._leaf_action(action)
+        name = getattr(getattr(action, "definition", None), "name", "") or self.current_action_name
+        if force or name != self._last_traced_action:
+            self._last_traced_action = name
+            self._trace().action_switch(self.tick_count, name, self.current_forced)
+
     def _instantiate_embedded(self, definition: ActionDefinition, params: dict[str, str]):
         class_name = definition.class_name.rsplit(".", 1)[-1]
         if class_name == "Look":
@@ -341,7 +374,7 @@ class BehaviorEngine:
                 break
         for key, raw in pending.items():
             resolved[key] = raw
-        return resolved
+        return normalize_params(resolved)
 
     def _resolve_raw_value(self, raw: str | None, scope: dict[str, object]):
         if raw is None:
@@ -389,6 +422,6 @@ class BehaviorEngine:
         for candidate in ("落下する", "Fall"):
             behavior = self.config.behaviors.get(candidate)
             if behavior:
+                self._trace().fallback_fall(self.tick_count, behavior.name)
                 self._set_behavior(behavior, forced=False)
                 return
-

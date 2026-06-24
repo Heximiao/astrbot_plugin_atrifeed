@@ -12,7 +12,9 @@ from shimeji_actions import parse_configuration  # noqa: E402
 from shimeji_expression import ExpressionRuntime  # noqa: E402
 from behavior_engine import BehaviorEngine  # noqa: E402
 from behavior_engine import BaseActionInstance  # noqa: E402
-from shimeji_actions import ActionDefinition  # noqa: E402
+from behavior.action_instances import MoveActionInstance  # noqa: E402
+from environment_provider import Rect  # noqa: E402
+from shimeji_actions import ActionDefinition, AnimationDefinition, FrameDefinition  # noqa: E402
 
 
 class DummyBorder:
@@ -193,6 +195,77 @@ class ActionParamTests(unittest.TestCase):
         self.assertEqual(action.param_value("TargetX"), 1)
         self.assertEqual(action.param_value("TargetX"), 1)
         self.assertEqual(calls, ["eval"])
+
+
+class MoveBorderSnapTests(unittest.TestCase):
+    def _run_move(self, border_name, border, anchor, facing=1):
+        class DummyWindow:
+            current_action_name = ""
+
+            def __init__(self):
+                self.facing = facing
+                self.runtime = SimpleNamespace(
+                    state_vars={},
+                    eval_bool=lambda _value, default=True, variables=None: default,
+                    environment_provider=SimpleNamespace(
+                        floor_border=lambda: border,
+                        ceiling_border=lambda: border,
+                        wall_border=lambda _look_right: border,
+                    ),
+                )
+
+            def anchor_point(self):
+                return SimpleNamespace(x=anchor["x"], y=anchor["y"])
+
+            def set_anchor(self, x, y):
+                anchor["x"] = int(x)
+                anchor["y"] = int(y)
+
+            def set_facing(self, value):
+                self.facing = 1 if value > 0 else -1
+
+        engine = SimpleNamespace(
+            tick_count=0,
+            tick_scale=1,
+            config=SimpleNamespace(constants={}),
+            window=DummyWindow(),
+            _resolve_param_values=lambda params, _local_vars: params,
+        )
+        action = MoveActionInstance(
+            engine,
+            ActionDefinition(
+                name="move",
+                action_type="move",
+                border=border_name,
+                animations=[
+                    AnimationDefinition(
+                        condition=None,
+                        frames=[FrameDefinition(image="", anchor=(64, 128), velocity=(0, 0), duration=1)],
+                    )
+                ],
+            ),
+            {},
+        )
+        action.tick()
+        return anchor
+
+    def test_active_window_top_border_snaps_to_top_not_bottom(self):
+        rect = Rect(left=200, top=100, right=600, bottom=400)
+        anchor = {"x": 300, "y": 100}
+        self._run_move("Floor", rect.topBorder, anchor)
+        self.assertEqual(anchor["y"], 100)
+
+    def test_active_window_bottom_border_snaps_to_bottom_not_top(self):
+        rect = Rect(left=200, top=100, right=600, bottom=400)
+        anchor = {"x": 300, "y": 400}
+        self._run_move("Ceiling", rect.bottomBorder, anchor)
+        self.assertEqual(anchor["y"], 400)
+
+    def test_active_window_left_wall_snaps_to_left_not_right(self):
+        rect = Rect(left=200, top=100, right=600, bottom=400)
+        anchor = {"x": 200, "y": 250}
+        self._run_move("Wall", rect.leftBorder, anchor, facing=1)
+        self.assertEqual(anchor["x"], 200)
 
 
 class ExpressionTests(unittest.TestCase):

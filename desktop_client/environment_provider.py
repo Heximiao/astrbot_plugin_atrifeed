@@ -58,6 +58,22 @@ class Border:
         self.rect = rect
         self.side = side
 
+    @property
+    def x(self) -> int | None:
+        if self.side == "left":
+            return self.rect.left
+        if self.side == "right":
+            return self.rect.right
+        return None
+
+    @property
+    def y(self) -> int | None:
+        if self.side == "top":
+            return self.rect.top
+        if self.side == "bottom":
+            return self.rect.bottom
+        return None
+
     def isOn(self, point) -> bool:
         if not self.rect.visible:
             return False

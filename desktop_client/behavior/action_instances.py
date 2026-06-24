@@ -150,16 +150,16 @@ class MoveActionInstance(BaseActionInstance):
             next_x = float(target_x)
         if self.definition.border in BORDER_GROUND:
             border = self.engine.window.runtime.environment_provider.floor_border()
-            if hasattr(border, "rect") and border.rect.visible:
-                next_y = border.rect.bottom
+            if hasattr(border, "y") and border.y is not None:
+                next_y = border.y
         elif self.definition.border in BORDER_CEILING:
             border = self.engine.window.runtime.environment_provider.ceiling_border()
-            if hasattr(border, "rect") and border.rect.visible:
-                next_y = border.rect.top
+            if hasattr(border, "y") and border.y is not None:
+                next_y = border.y
         elif self.definition.border in BORDER_WALL:
             border = self.engine.window.runtime.environment_provider.wall_border(self.engine.window.facing > 0)
-            if hasattr(border, "rect") and border.rect.visible:
-                next_x = border.rect.right if self.engine.window.facing > 0 else border.rect.left
+            if hasattr(border, "x") and border.x is not None:
+                next_x = border.x
             next_y += vy * dt
         else:
             next_y += vy * dt

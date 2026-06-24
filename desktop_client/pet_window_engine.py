@@ -119,6 +119,7 @@ class PetWindow(tk.Tk):
         self.chat_box.open_near(self.winfo_x(), max(0, self.winfo_y() - 120))
 
     def _menu(self, event):
+        self.engine.manual_commands.capture_environment()
         menu = tk.Menu(self, tearoff=False)
         for name in self.engine.available_commands():
             menu.add_command(label=name, command=lambda n=name: self._play_manual_action(n))

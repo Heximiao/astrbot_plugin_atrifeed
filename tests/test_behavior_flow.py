@@ -32,10 +32,23 @@ def make_engine():
         facing = -1
 
         def __init__(self):
+            def freeze_active_ie(rect, title, ticks=240):
+                provider.active_ie = SimpleNamespace(
+                    left=rect.left,
+                    top=rect.top,
+                    right=rect.right,
+                    bottom=rect.bottom,
+                    visible=True,
+                )
+                provider.active_ie_title = title
+                provider.freeze_ticks = ticks
+
             provider = SimpleNamespace(
                 screen=SimpleNamespace(left=0, right=800, top=0, bottom=600, visible=True),
                 work_area=SimpleNamespace(left=0, right=800, top=0, bottom=580, visible=True),
                 active_ie=SimpleNamespace(left=200, top=100, right=600, bottom=500, visible=True),
+                active_ie_title="Editor",
+                freeze_active_ie=freeze_active_ie,
                 floor_border=lambda ignore_separator=False: DummyBorder(),
                 ceiling_border=lambda ignore_separator=False: DummyBorder(),
                 wall_border=lambda look_right, ignore_separator=False: DummyBorder(),
@@ -202,6 +215,18 @@ class BehaviorFlowTests(unittest.TestCase):
         self.assertEqual(engine.debug_trace.events[0].kind, "manual_command")
         self.assertEqual(engine.debug_trace.events[0].data["mode"], "ie_edge_action")
         self.assertEqual(engine.debug_trace.events[0].data["selected_action"], "IEの左に飛びつく")
+
+    def test_manual_command_restores_captured_active_window(self):
+        engine = make_engine()
+        provider = engine.window.runtime.environment_provider
+        engine.manual_commands.capture_environment()
+        provider.active_ie = SimpleNamespace(left=0, top=0, right=1700, bottom=1000, visible=True)
+        provider.active_ie_title = "Windows 输入体验"
+
+        engine.force_manual_command("Wave")
+
+        self.assertEqual(provider.active_ie.left, 200)
+        self.assertEqual(provider.active_ie_title, "Editor")
 
     def test_external_state_records_forced_requests(self):
         engine = make_engine()

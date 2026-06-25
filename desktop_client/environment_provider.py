@@ -64,9 +64,6 @@ class Rect:
     def visible(self) -> bool:
         return self.width > 0 and self.height > 0
 
-    def contains(self, x: int, y: int) -> bool:
-        return self.left <= x <= self.right and self.top <= y <= self.bottom
-
     def intersects(self, other: "Rect") -> bool:
         if not self.visible or not other.visible:
             return False
@@ -357,11 +354,6 @@ def get_work_area_rect(window=None):
     return _get_system_work_area()
 
 
-def get_work_area_bottom(window=None):
-    work_area = get_work_area_rect(window)
-    return work_area.bottom if work_area else None
-
-
 def get_screen_rect(window=None):
     rect = _get_window_monitor_rect(window)
     if rect:
@@ -388,22 +380,12 @@ def get_cursor_state(previous: PointState | None = None) -> PointState:
     return previous or PointState()
 
 
-def get_active_window_rect(window=None) -> tuple[Rect, str]:
-    rect, title, _hwnd = get_active_window_info(window)
-    return rect, title
-
-
 def get_active_window_info(window=None):
     if _title_filters_configured():
         rect, title, hwnd = _get_interactive_window_info(window)
         if rect.visible:
             return rect, title, hwnd
     return _get_foreground_window_info(window)
-
-
-def _get_interactive_window_rect(window=None) -> tuple[Rect, str]:
-    rect, title, _hwnd = _get_interactive_window_info(window)
-    return rect, title
 
 
 def _get_interactive_window_info(window=None):
@@ -427,11 +409,6 @@ def _get_interactive_window_info(window=None):
         return result["rect"], result["title"], result["hwnd"]
     except Exception:
         return Rect(), "", None
-
-
-def _get_foreground_window_rect(window=None) -> tuple[Rect, str]:
-    rect, title, _hwnd = _get_foreground_window_info(window)
-    return rect, title
 
 
 def _get_foreground_window_info(window=None):

@@ -23,10 +23,6 @@ class ShimejiRuntime:
     def eval_value(self, value: str | None, default=None, variables: dict | None = None):
         return self.expression_runtime.eval(value, default=default, variables=variables)
 
-    def current_anchor(self):
-        point = self.window.anchor_point()
-        return point.x, point.y
-
     def current_frame_anchor(self):
         return getattr(self.window, "current_frame_anchor", lambda: (64, 128))()
 

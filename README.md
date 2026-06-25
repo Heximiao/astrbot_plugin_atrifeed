@@ -28,6 +28,9 @@
 
 ## 📂 文件架构
 
+<details>
+<summary>点击展开完整文件架构</summary>
+
 ```text
 astrbot_plugin_atrifeed/
 ├── main.py                   # 插件入口：注册指令、分发事件、初始化
@@ -102,6 +105,8 @@ astrbot_plugin_atrifeed/
     └── shop.html          # 商店页面模板
 
 ```
+
+</details>
 
 ## 🎮 使用指令
 
@@ -195,6 +200,7 @@ astrbot_plugin_atrifeed/
 * **[AstrBot](https://github.com/astrbotdevs/astrbot)**：感谢 Soulter 提供的强大且易用的生态框架。
 * **[星火燃愿]**：感谢星火燃愿提供的巡礼图片的处理支持
 * **[Furina010013](https://github.com/Furina010013)**:感谢提供的代码贡献支持
-* **[Bing2Na冰](https://space.bilibili.com/34884714?spm_id_from=333.788.upinfo.detail.click)**：感谢提供亚托莉桌宠的思路与素材
+* **[Bing2Na冰](https://space.bilibili.com/34884714?spm_id_from=333.788.upinfo.detail.click)**：感谢Bing2Na冰提供亚托莉桌宠的思路与素材
+* **[shimeji](https://kilkakon.com/shimeji/)**：感谢shimeji引擎提供的源代码参考
 
 觉得亚托莉可爱的话，就给个 star 吧 ❤️~

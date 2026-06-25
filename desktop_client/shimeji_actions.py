@@ -10,9 +10,6 @@ TYPE_EMBEDDED = "embedded"
 TYPE_SEQUENCE = "sequence"
 TYPE_SELECT = "select"
 
-TYPE_BUILTIN = TYPE_EMBEDDED
-TYPE_COMPOUND = TYPE_SEQUENCE
-
 TAG_ALIASES = {
     "constant": {"定数", "Constant"},
     "action": {"動作", "Action"},
@@ -147,14 +144,6 @@ def parse_configuration(asset_dir: str | Path, action_file: str = "Actions.xml",
     behaviors = _parse_behaviors(behavior_root)
     actions = _parse_actions(asset_dir, action_root)
     return ShimejiConfiguration(asset_dir=asset_dir, constants=constants, actions=actions, behaviors=behaviors)
-
-
-def parse_actions(asset_dir: str | Path) -> dict[str, ActionDefinition]:
-    return parse_configuration(asset_dir).actions
-
-
-def parse_behaviors(asset_dir: str | Path) -> dict[str, BehaviorDefinition]:
-    return parse_configuration(asset_dir).behaviors
 
 
 def _parse_constants(root) -> dict[str, str]:

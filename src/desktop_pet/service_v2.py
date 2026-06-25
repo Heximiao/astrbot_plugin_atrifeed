@@ -91,6 +91,3 @@ class DesktopPetService:
         if self.api:
             self.api.stop()
             self.api = None
-
-    def dispatch_pet_event(self, event_type: str, payload: dict | None = None) -> None:
-        logger.debug(f"[Atri] 桌宠事件: {event_type}, payload={payload or {}}")

@@ -1,9 +1,14 @@
 import ctypes
+import os
 from dataclasses import dataclass
 from types import SimpleNamespace
 
 
 BORDER_TOLERANCE = 6
+DEFAULT_WINDOW_TITLE_BLACKLIST = (
+    "NVIDIA GeForce Overlay",
+    "Windows Input Experience",
+)
 
 
 class _RECT(ctypes.Structure):
@@ -12,6 +17,19 @@ class _RECT(ctypes.Structure):
         ("top", ctypes.c_long),
         ("right", ctypes.c_long),
         ("bottom", ctypes.c_long),
+    ]
+
+
+class _POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+class _MONITORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.c_ulong),
+        ("rcMonitor", _RECT),
+        ("rcWork", _RECT),
+        ("dwFlags", ctypes.c_ulong),
     ]
 
 
@@ -29,6 +47,10 @@ class Rect:
     top: int = 0
     right: int = 0
     bottom: int = 0
+    dleft: int = 0
+    dtop: int = 0
+    dright: int = 0
+    dbottom: int = 0
 
     @property
     def width(self) -> int:
@@ -44,6 +66,38 @@ class Rect:
 
     def contains(self, x: int, y: int) -> bool:
         return self.left <= x <= self.right and self.top <= y <= self.bottom
+
+    def intersects(self, other: "Rect") -> bool:
+        if not self.visible or not other.visible:
+            return False
+        return not (
+            self.right <= other.left
+            or other.right <= self.left
+            or self.bottom <= other.top
+            or other.bottom <= self.top
+        )
+
+    def update_from(self, other: "Rect") -> None:
+        self.dleft = other.left - self.left
+        self.dtop = other.top - self.top
+        self.dright = other.right - self.right
+        self.dbottom = other.bottom - self.bottom
+        self.left = other.left
+        self.top = other.top
+        self.right = other.right
+        self.bottom = other.bottom
+
+    def copy(self) -> "Rect":
+        return Rect(
+            left=self.left,
+            top=self.top,
+            right=self.right,
+            bottom=self.bottom,
+            dleft=self.dleft,
+            dtop=self.dtop,
+            dright=self.dright,
+            dbottom=self.dbottom,
+        )
 
     @property
     def topBorder(self):
@@ -98,10 +152,42 @@ class Border:
             return self.rect.top - BORDER_TOLERANCE <= y <= self.rect.bottom + BORDER_TOLERANCE and abs(x - self.rect.right) <= BORDER_TOLERANCE
         return False
 
+    def move(self, point):
+        if not self.rect.visible:
+            return point
+        x = point.x if hasattr(point, "x") else point[0]
+        y = point.y if hasattr(point, "y") else point[1]
+        if self.side in {"left", "right"}:
+            old_top = self.rect.top - self.rect.dtop
+            old_bottom = self.rect.bottom - self.rect.dbottom
+            old_height = old_bottom - old_top
+            if old_height == 0:
+                return point
+            dx = self.rect.dright if self.side == "right" else self.rect.dleft
+            new_x = x + dx
+            new_y = (y - old_top) * self.rect.height / old_height + self.rect.top
+            if abs(new_x - x) >= 80 or abs(new_y - y) >= 80:
+                return point
+            return PointState(int(round(new_x)), int(round(new_y)))
+        old_left = self.rect.left - self.rect.dleft
+        old_right = self.rect.right - self.rect.dright
+        old_width = old_right - old_left
+        if old_width == 0:
+            return point
+        dy = self.rect.dbottom if self.side == "bottom" else self.rect.dtop
+        new_x = (x - old_left) * self.rect.width / old_width + self.rect.left
+        new_y = y + dy
+        if abs(new_x - x) >= 80 or new_y - y > 20 or new_y - y < -80:
+            return point
+        return PointState(int(round(new_x)), int(round(new_y)))
+
 
 class NullBorder:
     def isOn(self, _point) -> bool:
         return False
+
+    def move(self, point):
+        return point
 
 
 NULL_BORDER = NullBorder()
@@ -113,24 +199,28 @@ class EnvironmentProvider:
         self.cursor = PointState()
         self.work_area = Rect()
         self.screen = Rect()
+        self.screens: list[Rect] = []
         self.active_ie = Rect()
         self.active_ie_title = ""
         self._active_ie_freeze_ticks = 0
         self.refresh()
 
     def refresh(self):
-        self.work_area = get_work_area_rect(self.window) or Rect(
+        work_area = get_work_area_rect(self.window) or Rect(
             left=0,
             top=0,
             right=self.window.winfo_screenwidth(),
             bottom=self.window.winfo_screenheight(),
         )
-        self.screen = get_screen_rect(self.window) or Rect(
+        screen = get_screen_rect(self.window) or Rect(
             left=0,
             top=0,
             right=self.window.winfo_screenwidth(),
             bottom=self.window.winfo_screenheight(),
         )
+        self.work_area.update_from(work_area)
+        self.screen.update_from(screen)
+        self.screens = get_screen_rects() or [self.screen.copy()]
         cursor = get_cursor_state(self.cursor)
         self.cursor = cursor
         if self._active_ie_freeze_ticks > 0:
@@ -138,16 +228,16 @@ class EnvironmentProvider:
             return
         active_ie, active_ie_title = get_active_window_rect(self.window)
         if self._is_usable_active_window(active_ie, active_ie_title):
-            self.active_ie = active_ie
+            self.active_ie.update_from(active_ie)
             self.active_ie_title = active_ie_title
         elif not self.active_ie.visible:
-            self.active_ie = Rect()
+            self.active_ie.update_from(Rect())
             self.active_ie_title = ""
 
     def freeze_active_ie(self, rect: Rect, title: str, ticks: int = 240):
         if not rect.visible:
             return
-        self.active_ie = Rect(left=rect.left, top=rect.top, right=rect.right, bottom=rect.bottom)
+        self.active_ie.update_from(rect.copy())
         self.active_ie_title = title
         self._active_ie_freeze_ticks = max(1, int(ticks))
 
@@ -199,19 +289,17 @@ class EnvironmentProvider:
     def is_screen_top_bottom(self, anchor=None) -> bool:
         anchor = anchor or self.window.anchor_point()
         return (
-            self.screen.visible
-            and self.work_area.visible
-            and self.screen.left <= anchor.x <= self.screen.right
+            self.work_area.visible
             and (anchor.y <= self.work_area.top + BORDER_TOLERANCE or anchor.y >= self.work_area.bottom - BORDER_TOLERANCE)
+            and self._screen_edge_count(anchor, "horizontal") == 1
         )
 
     def is_screen_left_right(self, anchor=None) -> bool:
         anchor = anchor or self.window.anchor_point()
         return (
-            self.screen.visible
-            and self.work_area.visible
-            and self.screen.top <= anchor.y <= self.screen.bottom
+            self.work_area.visible
             and (anchor.x <= self.work_area.left + BORDER_TOLERANCE or anchor.x >= self.work_area.right - BORDER_TOLERANCE)
+            and self._screen_edge_count(anchor, "vertical") == 1
         )
 
     def _is_usable_active_window(self, rect: Rect, title: str) -> bool:
@@ -219,7 +307,30 @@ class EnvironmentProvider:
             return False
         if not title:
             return False
+        if title == "Program Manager":
+            return False
+        if self.screen.visible and not rect.intersects(self.screen):
+            return False
         return not _matches_window_rect(self.window, rect)
+
+    def _screen_edge_count(self, anchor, axis: str) -> int:
+        count = 0
+        for rect in getattr(self, "screens", None) or [self.screen]:
+            if axis == "horizontal":
+                if rect.topBorder.isOn(anchor):
+                    count += 1
+                if rect.bottomBorder.isOn(anchor):
+                    count += 1
+            else:
+                if rect.leftBorder.isOn(anchor):
+                    count += 1
+                if rect.rightBorder.isOn(anchor):
+                    count += 1
+        if count == 0:
+            if axis == "horizontal":
+                return int(self.work_area.topBorder.isOn(anchor) or self.work_area.bottomBorder.isOn(anchor))
+            return int(self.work_area.leftBorder.isOn(anchor) or self.work_area.rightBorder.isOn(anchor))
+        return count
 
 
 def get_work_area_rect(window=None):
@@ -261,27 +372,122 @@ def get_cursor_state(previous: PointState | None = None) -> PointState:
 
 
 def get_active_window_rect(window=None) -> tuple[Rect, str]:
-    try:
-        class RECT(ctypes.Structure):
-            _fields_ = [
-                ("left", ctypes.c_long),
-                ("top", ctypes.c_long),
-                ("right", ctypes.c_long),
-                ("bottom", ctypes.c_long),
-            ]
+    if _title_filters_configured():
+        rect, title = _get_interactive_window_rect(window)
+        if rect.visible:
+            return rect, title
+    return _get_foreground_window_rect(window)
 
+
+def _get_interactive_window_rect(window=None) -> tuple[Rect, str]:
+    try:
+        user32 = ctypes.windll.user32
+        result = {"rect": Rect(), "title": ""}
+        callback_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+        def callback(hwnd, _data):
+            rect, title, status = _window_candidate(hwnd, window)
+            if status == "usable":
+                result["rect"] = rect
+                result["title"] = title
+                return False
+            if status == "invalid":
+                return False
+            return True
+
+        user32.EnumWindows(callback_type(callback), None)
+        return result["rect"], result["title"]
+    except Exception:
+        return Rect(), ""
+
+
+def _get_foreground_window_rect(window=None) -> tuple[Rect, str]:
+    try:
         user32 = ctypes.windll.user32
         hwnd = user32.GetForegroundWindow()
         if not hwnd:
             return Rect(), ""
-        rect = RECT()
-        if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-            return Rect(), ""
-        title = ctypes.create_unicode_buffer(512)
-        user32.GetWindowTextW(hwnd, title, len(title))
-        return _rect_from_raw(rect), title.value
+        rect, title, status = _window_candidate(hwnd, window)
+        if status == "usable":
+            return rect, title
+        return Rect(), ""
     except Exception:
         return Rect(), ""
+
+
+def _window_candidate(hwnd, window=None, allow_maximized: bool = False) -> tuple[Rect, str, str]:
+    try:
+        user32 = ctypes.windll.user32
+        if not hwnd or not user32.IsWindowVisible(ctypes.c_void_p(hwnd)):
+            return Rect(), "", "skip"
+        if _is_window_cloaked(hwnd):
+            return Rect(), "", "skip"
+        if user32.IsIconic(ctypes.c_void_p(hwnd)):
+            return Rect(), "", "skip"
+        if not allow_maximized and user32.IsZoomed(ctypes.c_void_p(hwnd)):
+            return Rect(), "", "invalid"
+        title = _window_title(hwnd)
+        if not _title_is_interactive(title):
+            return Rect(), title, "skip"
+        raw = _RECT()
+        if not user32.GetWindowRect(ctypes.c_void_p(hwnd), ctypes.byref(raw)):
+            return Rect(), title, "skip"
+        rect = _rect_from_raw(raw)
+        screen = get_screen_rect(window)
+        if screen and not rect.intersects(screen):
+            return rect, title, "skip"
+        if _matches_window_rect(window, rect):
+            return rect, title, "skip"
+        return rect, title, "usable"
+    except Exception:
+        return Rect(), "", "skip"
+
+
+def _window_title(hwnd) -> str:
+    title = ctypes.create_unicode_buffer(1024)
+    try:
+        length = ctypes.windll.user32.GetWindowTextW(ctypes.c_void_p(hwnd), title, len(title))
+        return title.value[:length]
+    except Exception:
+        return ""
+
+
+def _title_is_interactive(title: str) -> bool:
+    if not title or title == "Program Manager":
+        return False
+    blacklist = _split_title_filter(os.environ.get("ATRI_PET_INTERACTIVE_WINDOWS_BLACKLIST", ""))
+    blacklist.extend(DEFAULT_WINDOW_TITLE_BLACKLIST)
+    if any(item in title for item in blacklist):
+        return False
+    whitelist = _split_title_filter(os.environ.get("ATRI_PET_INTERACTIVE_WINDOWS", ""))
+    if whitelist:
+        return any(item in title for item in whitelist)
+    return True
+
+
+def _title_filters_configured() -> bool:
+    return bool(
+        os.environ.get("ATRI_PET_INTERACTIVE_WINDOWS", "").strip()
+        or os.environ.get("ATRI_PET_INTERACTIVE_WINDOWS_BLACKLIST", "").strip()
+    )
+
+
+def _split_title_filter(value: str) -> list[str]:
+    return [item.strip() for item in value.split("/") if item.strip()]
+
+
+def _is_window_cloaked(hwnd) -> bool:
+    try:
+        cloaked = ctypes.c_int(0)
+        result = ctypes.windll.dwmapi.DwmGetWindowAttribute(
+            ctypes.c_void_p(hwnd),
+            14,
+            ctypes.byref(cloaked),
+            ctypes.sizeof(cloaked),
+        )
+        return result == 0 and cloaked.value != 0
+    except Exception:
+        return False
 
 
 def _get_window_monitor_work_area(window):
@@ -311,31 +517,13 @@ def _matches_window_rect(window, rect: Rect) -> bool:
 
 
 def _monitor_rect(window, work_area: bool):
-    if window is None:
-        return None
     try:
-        class RECT(ctypes.Structure):
-            _fields_ = [
-                ("left", ctypes.c_long),
-                ("top", ctypes.c_long),
-                ("right", ctypes.c_long),
-                ("bottom", ctypes.c_long),
-            ]
-
-        class MONITORINFO(ctypes.Structure):
-            _fields_ = [
-                ("cbSize", ctypes.c_ulong),
-                ("rcMonitor", RECT),
-                ("rcWork", RECT),
-                ("dwFlags", ctypes.c_ulong),
-            ]
-
         user32 = ctypes.windll.user32
-        monitor = user32.MonitorFromWindow(ctypes.c_void_p(int(window.winfo_id())), 2)
+        monitor = _monitor_from_anchor(window) or _monitor_from_window(window)
         if not monitor:
             return None
-        info = MONITORINFO()
-        info.cbSize = ctypes.sizeof(MONITORINFO)
+        info = _MONITORINFO()
+        info.cbSize = ctypes.sizeof(_MONITORINFO)
         if not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
             return None
         return _rect_from_raw(info.rcWork if work_area else info.rcMonitor)
@@ -343,22 +531,55 @@ def _monitor_rect(window, work_area: bool):
         return None
 
 
+def _monitor_from_anchor(window):
+    if window is None:
+        return None
+    try:
+        anchor = window.anchor_point()
+        point = _POINT(int(anchor.x), int(anchor.y))
+        return ctypes.windll.user32.MonitorFromPoint(point, 2)
+    except Exception:
+        return None
+
+
+def _monitor_from_window(window):
+    if window is None:
+        return None
+    try:
+        return ctypes.windll.user32.MonitorFromWindow(ctypes.c_void_p(int(window.winfo_id())), 2)
+    except Exception:
+        return None
+
+
 def _get_system_work_area():
     try:
-        class RECT(ctypes.Structure):
-            _fields_ = [
-                ("left", ctypes.c_long),
-                ("top", ctypes.c_long),
-                ("right", ctypes.c_long),
-                ("bottom", ctypes.c_long),
-            ]
-
-        rect = RECT()
+        rect = _RECT()
         if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
             return _rect_from_raw(rect)
     except Exception:
         pass
     return None
+
+
+def get_screen_rects() -> list[Rect]:
+    try:
+        rects: list[Rect] = []
+        callback_type = ctypes.WINFUNCTYPE(
+            ctypes.c_bool,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.POINTER(_RECT),
+            ctypes.c_void_p,
+        )
+
+        def callback(_monitor, _hdc, rect, _data):
+            rects.append(_rect_from_raw(rect.contents))
+            return True
+
+        ctypes.windll.user32.EnumDisplayMonitors(None, None, callback_type(callback), None)
+        return rects
+    except Exception:
+        return []
 
 
 def _rect_from_raw(rect):

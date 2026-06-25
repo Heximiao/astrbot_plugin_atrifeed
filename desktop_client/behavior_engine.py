@@ -20,6 +20,7 @@ from behavior.behavior_instances import (
     BaseBehaviorInstance,
     UserBehaviorInstance,
 )
+from behavior.api import BehaviorLayerApi, build_current_snapshot
 from behavior.constants import LEGACY_NAME_MAP, MISSING, TICK_MS, TICK_SCALE
 from behavior.param_normalizer import normalize_params
 from behavior.types import CandidateRef
@@ -46,6 +47,7 @@ class BehaviorEngine:
         self.debug_trace = DebugTrace(debug_trace_enabled)
         self.override_controller = OverrideController()
         self.manual_commands = ManualCommandController(self)
+        self.api = BehaviorLayerApi(self)
         self.images: dict[tuple[str, bool], object] = {}
         self.tick_count = 0
         self.current_behavior: BehaviorDefinition | None = None
@@ -97,6 +99,9 @@ class BehaviorEngine:
     def available_commands(self) -> list[str]:
         names = sorted(set(self.config.behaviors) | set(self.config.actions))
         return names
+
+    def current_snapshot(self) -> dict:
+        return build_current_snapshot(self)
 
     def force_behavior(self, name: str):
         resolved = self._resolve_name(name)

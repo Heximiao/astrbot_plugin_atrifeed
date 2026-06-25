@@ -26,14 +26,17 @@ class ManualCommandController:
         action = self.engine.config.actions.get(resolved)
         if behavior is not None and self.engine._conditions_pass(behavior.conditions, behavior.params):
             self._push_behavior(resolved, mode="behavior")
-        elif action is not None and behavior is None:
-            self._push_action(resolved, mode="action")
         elif self._push_ie_edge_action(resolved):
             return
+        elif action is not None and (behavior is None or self._allows_manual_action_fallback(resolved)):
+            self._push_action(resolved, mode="action")
         else:
             feedback = self._feedback_action()
             if feedback is not None:
                 self._push_action(feedback, mode="feedback")
+
+    def _allows_manual_action_fallback(self, name: str) -> bool:
+        return "IE" in name and "投げる" in name
 
     def _push_ie_edge_action(self, name: str) -> bool:
         if name not in {"IEの左に飛びつく", "IEの右に飛びつく"}:

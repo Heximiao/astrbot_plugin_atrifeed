@@ -138,6 +138,10 @@ class AnimateActionInstance(BaseActionInstance):
         return self.elapsed() < animation.duration
 
 
+class UnsupportedAdvancedActionInstance(AnimateActionInstance):
+    fallback_reason = "unsupported_advanced_action"
+
+
 class MoveActionInstance(BaseActionInstance):
     def _tick(self):
         super()._tick()
@@ -202,6 +206,165 @@ class MoveActionInstance(BaseActionInstance):
             return False
         target_x = self.param_float("TargetX", default=None)
         target_y = self.param_float("TargetY", default=None)
+        anchor = self.engine.window.anchor_point()
+        reached_x = target_x is None or abs(anchor.x - target_x) <= 1
+        reached_y = target_y is None or abs(anchor.y - target_y) <= 1
+        return not (reached_x and reached_y)
+
+
+class MoveWithTurnActionInstance(MoveActionInstance):
+    def __init__(self, engine: "BehaviorEngine", definition: ActionDefinition, params: dict[str, str]):
+        super().__init__(engine, definition, params)
+        self.turning = False
+        self.turn_start_tick = engine.tick_count
+
+    def _current_animation(self):
+        animations = self.definition.animations
+        if not animations:
+            return None
+        if self.turning and len(animations) >= 2:
+            return animations[-1]
+        scope = {**self.engine.config.constants, **self.engine.window.runtime.state_vars, **self.local_vars}
+        candidates = animations[:-1] if len(animations) >= 2 else animations
+        for animation in candidates:
+            if not animation.condition or self.engine.window.runtime.eval_bool(animation.condition, default=False, variables=scope):
+                return animation
+        return candidates[0] if candidates else animations[0]
+
+    def _tick(self):
+        target_x = self.param_float("TargetX", default=None)
+        anchor = self.engine.window.anchor_point()
+        if target_x is not None and abs(target_x - anchor.x) > 1:
+            desired_facing = 1 if target_x > anchor.x else -1
+            if desired_facing != self.engine.window.facing and not self.turning and len(self.definition.animations) >= 2:
+                self.turning = True
+                self.turn_start_tick = self.engine.tick_count
+                self.engine.window.set_facing(desired_facing)
+                return
+
+        if self.turning:
+            animation = self._current_animation()
+            duration = animation.duration if animation is not None else 1
+            if self.engine.tick_count - self.turn_start_tick < duration:
+                return
+            self.turning = False
+
+        super()._tick()
+
+    def _has_next(self) -> bool:
+        return self.turning or super()._has_next()
+
+
+class ActiveIEMixin:
+    def _active_ie(self):
+        provider = self.engine.window.runtime.environment_provider
+        return provider.active_ie
+
+    def _ie_offsets(self) -> tuple[int, int]:
+        return (
+            int(self.param_value("IeOffsetX", default=0) or 0),
+            int(self.param_value("IeOffsetY", default=0) or 0),
+        )
+
+    def _is_active_ie_visible(self) -> bool:
+        active_ie = self._active_ie()
+        return bool(getattr(active_ie, "visible", False))
+
+    def _is_attached_to_active_ie(self) -> bool:
+        active_ie = self._active_ie()
+        if not getattr(active_ie, "visible", False):
+            return False
+        anchor = self.engine.window.anchor_point()
+        offset_x, offset_y = self._ie_offsets()
+        tolerance = 6
+        if self.engine.window.facing > 0:
+            expected_x = active_ie.left + offset_x
+        else:
+            expected_x = active_ie.right - offset_x
+        expected_y = active_ie.bottom - offset_y
+        return abs(anchor.x - expected_x) <= tolerance and abs(anchor.y - expected_y) <= tolerance
+
+    def _move_active_ie_with_anchor(self):
+        active_ie = self._active_ie()
+        if not getattr(active_ie, "visible", False):
+            return
+        anchor = self.engine.window.anchor_point()
+        offset_x, offset_y = self._ie_offsets()
+        width = active_ie.width
+        height = active_ie.height
+        if self.engine.window.facing > 0:
+            left = anchor.x - offset_x
+        else:
+            left = anchor.x + offset_x - width
+        top = anchor.y + offset_y - height
+        self._move_active_ie_to(left, top)
+
+    def _move_active_ie_to(self, left: float, top: float) -> bool:
+        provider = self.engine.window.runtime.environment_provider
+        move = getattr(provider, "move_active_ie", None)
+        if move is not None:
+            return bool(move(int(round(left)), int(round(top))))
+
+        active_ie = self._active_ie()
+        moved = active_ie.copy()
+        moved.left = int(round(left))
+        moved.top = int(round(top))
+        moved.right = moved.left + active_ie.width
+        moved.bottom = moved.top + active_ie.height
+        freeze = getattr(provider, "freeze_active_ie", None)
+        if freeze is not None:
+            freeze(moved, getattr(provider, "active_ie_title", ""), ticks=4)
+            return False
+        active_ie.update_from(moved)
+        return False
+
+
+class WalkWithIEActionInstance(ActiveIEMixin, MoveActionInstance):
+    def _tick(self):
+        if not self._is_active_ie_visible() or not self._is_attached_to_active_ie():
+            raise LostGroundError()
+
+        frame = self.current_frame()
+        if frame is None:
+            return
+        target_x = self.param_float("TargetX", default=None)
+        target_y = self.param_float("TargetY", default=None)
+        anchor = self.engine.window.anchor_point()
+        next_x = anchor.x
+        next_y = anchor.y
+        vx, vy = frame.velocity
+        dt = self.engine.tick_scale
+        if target_x is not None and abs(float(target_x) - anchor.x) > 1:
+            self.engine.window.set_facing(1 if target_x > anchor.x else -1)
+        if vx:
+            step_x = abs(vx) * self.engine.window.facing * dt
+            next_x += step_x
+            if target_x is not None:
+                if step_x > 0 and next_x >= target_x:
+                    next_x = float(target_x)
+                elif step_x < 0 and next_x <= target_x:
+                    next_x = float(target_x)
+        elif target_x is not None and not self._animation_has_axis_motion(0):
+            next_x = float(target_x)
+        if vy:
+            next_y += vy * dt
+        elif target_y is not None and not self._animation_has_axis_motion(1):
+            next_y = float(target_y)
+        if target_y is not None:
+            if vy > 0 and next_y >= target_y:
+                next_y = float(target_y)
+            elif vy < 0 and next_y <= target_y:
+                next_y = float(target_y)
+        self.engine.window.set_anchor(next_x, next_y)
+        self._move_active_ie_with_anchor()
+
+    def _has_next(self) -> bool:
+        if not BaseActionInstance._has_next(self):
+            return False
+        target_x = self.param_float("TargetX", default=None)
+        target_y = self.param_float("TargetY", default=None)
+        if target_x is None and target_y is None:
+            return True
         anchor = self.engine.window.anchor_point()
         reached_x = target_x is None or abs(anchor.x - target_x) <= 1
         reached_y = target_y is None or abs(anchor.y - target_y) <= 1
@@ -399,6 +562,34 @@ class FallActionInstance(BaseActionInstance):
 
     def _has_next(self) -> bool:
         return not self.finished
+
+
+class FallWithIEActionInstance(ActiveIEMixin, FallActionInstance):
+    def __init__(self, engine: "BehaviorEngine", definition: ActionDefinition, params: dict[str, str]):
+        super().__init__(engine, definition, params)
+        self.carry_active_ie = self._is_attached_to_active_ie()
+
+    def _tick(self):
+        if not self._is_active_ie_visible():
+            raise LostGroundError()
+        super()._tick()
+        if self.carry_active_ie:
+            self._move_active_ie_with_anchor()
+
+
+class ThrowIEActionInstance(ActiveIEMixin, AnimateActionInstance):
+    def _tick(self):
+        active_ie = self._active_ie()
+        if not getattr(active_ie, "visible", False):
+            self.finished = True
+            return
+        initial_vx = float(self.param_value("InitialVX", default=32) or 32)
+        initial_vy = float(self.param_value("InitialVY", default=-10) or -10)
+        gravity = float(self.param_value("Gravity", default=0.5) or 0.5)
+        direction = 1 if self.engine.window.facing > 0 else -1
+        left = active_ie.left + direction * initial_vx
+        top = active_ie.top + initial_vy + int(self.elapsed() * gravity)
+        self._move_active_ie_to(left, top)
 
 
 class DraggedActionInstance(BaseActionInstance):

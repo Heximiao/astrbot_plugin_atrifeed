@@ -6,14 +6,19 @@ from behavior.action_instances import (
     BaseActionInstance,
     DraggedActionInstance,
     FallActionInstance,
+    FallWithIEActionInstance,
     JumpActionInstance,
     LookActionInstance,
     MoveActionInstance,
+    MoveWithTurnActionInstance,
     OffsetActionInstance,
     RegistActionInstance,
     SelectActionInstance,
     SequenceActionInstance,
     StayActionInstance,
+    ThrowIEActionInstance,
+    UnsupportedAdvancedActionInstance,
+    WalkWithIEActionInstance,
 )
 from behavior.behavior_instances import (
     ActionBehaviorInstance,
@@ -359,14 +364,24 @@ class BehaviorEngine:
             return JumpActionInstance(self, definition, params)
         if class_name == "Fall":
             return FallActionInstance(self, definition, params)
+        if class_name == "MoveWithTurn":
+            return MoveWithTurnActionInstance(self, definition, params)
         if class_name == "Dragged":
             return DraggedActionInstance(self, definition, params)
         if class_name == "Regist":
             return RegistActionInstance(self, definition, params)
-        if class_name in {"FallWithIE"}:
-            return FallActionInstance(self, definition, params)
-        if class_name in {"WalkWithIE"}:
-            return MoveActionInstance(self, definition, params)
+        if class_name == "FallWithIE":
+            return FallWithIEActionInstance(self, definition, params)
+        if class_name == "WalkWithIE":
+            return WalkWithIEActionInstance(self, definition, params)
+        if class_name == "ThrowIE":
+            return ThrowIEActionInstance(self, definition, params)
+        if (
+            class_name == "Breed"
+            or class_name.startswith("Broadcast")
+            or class_name.startswith("Scan")
+        ):
+            return UnsupportedAdvancedActionInstance(self, definition, params)
         return AnimateActionInstance(self, definition, params)
 
     def _resolve_param_values(self, params: dict[str, str], local_vars: dict[str, object]) -> dict[str, object]:

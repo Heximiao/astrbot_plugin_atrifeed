@@ -3,6 +3,7 @@ __pycache__/
 *$py.class
 
 tests/*
+!tests/test_advanced_actions.py
 !tests/test_behavior_api.py
 .pytest_cache/
 .coverage

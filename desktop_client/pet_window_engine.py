@@ -1,8 +1,9 @@
-import tkinter as tk
+﻿import tkinter as tk
 
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
 from drag_controller import DragController
+from menu_labels import menu_label
 from shimeji_runtime import ShimejiRuntime
 
 
@@ -122,7 +123,7 @@ class PetWindow(tk.Tk):
         self.engine.manual_commands.capture_environment()
         menu = tk.Menu(self, tearoff=False)
         for name in self.engine.available_commands():
-            menu.add_command(label=name, command=lambda n=name: self._play_manual_action(n))
+            menu.add_command(label=menu_label(name), command=lambda n=name: self._play_manual_action(n))
         menu.add_separator()
         menu.add_command(label="聊天", command=self._open_chat)
         menu.add_command(label="退出", command=self.destroy)

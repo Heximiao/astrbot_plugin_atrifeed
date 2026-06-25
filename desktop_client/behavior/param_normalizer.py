@@ -17,6 +17,8 @@ PARAM_ALIASES: dict[str, tuple[str, ...]] = {
     "OffsetX": ("オフセットX",),
     "OffsetY": ("オフセットY",),
     "VelocityParam": ("速度",),
+    "IeOffsetX": ("IEの端X", "IEOffsetX"),
+    "IeOffsetY": ("IEの端Y", "IEOffsetY"),
 }
 
 

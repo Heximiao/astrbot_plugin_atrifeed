@@ -202,6 +202,7 @@ class EnvironmentProvider:
         self.screens: list[Rect] = []
         self.active_ie = Rect()
         self.active_ie_title = ""
+        self.active_ie_hwnd = None
         self._active_ie_freeze_ticks = 0
         self.refresh()
 
@@ -226,13 +227,15 @@ class EnvironmentProvider:
         if self._active_ie_freeze_ticks > 0:
             self._active_ie_freeze_ticks -= 1
             return
-        active_ie, active_ie_title = get_active_window_rect(self.window)
+        active_ie, active_ie_title, active_ie_hwnd = get_active_window_info(self.window)
         if self._is_usable_active_window(active_ie, active_ie_title):
             self.active_ie.update_from(active_ie)
             self.active_ie_title = active_ie_title
+            self.active_ie_hwnd = active_ie_hwnd
         elif not self.active_ie.visible:
             self.active_ie.update_from(Rect())
             self.active_ie_title = ""
+            self.active_ie_hwnd = None
 
     def freeze_active_ie(self, rect: Rect, title: str, ticks: int = 240):
         if not rect.visible:
@@ -240,6 +243,20 @@ class EnvironmentProvider:
         self.active_ie.update_from(rect.copy())
         self.active_ie_title = title
         self._active_ie_freeze_ticks = max(1, int(ticks))
+
+    def move_active_ie(self, left: int, top: int) -> bool:
+        if not self.active_ie.visible:
+            return False
+        moved = self.active_ie.copy()
+        moved.left = int(round(left))
+        moved.top = int(round(top))
+        moved.right = moved.left + self.active_ie.width
+        moved.bottom = moved.top + self.active_ie.height
+        moved_real_window = _move_window_rect(self.active_ie_hwnd, moved)
+        self.active_ie.update_from(moved)
+        if moved_real_window:
+            self._active_ie_freeze_ticks = max(self._active_ie_freeze_ticks, 4)
+        return moved_real_window
 
     def mascot_environment(self):
         return SimpleNamespace(
@@ -372,17 +389,27 @@ def get_cursor_state(previous: PointState | None = None) -> PointState:
 
 
 def get_active_window_rect(window=None) -> tuple[Rect, str]:
+    rect, title, _hwnd = get_active_window_info(window)
+    return rect, title
+
+
+def get_active_window_info(window=None):
     if _title_filters_configured():
-        rect, title = _get_interactive_window_rect(window)
+        rect, title, hwnd = _get_interactive_window_info(window)
         if rect.visible:
-            return rect, title
-    return _get_foreground_window_rect(window)
+            return rect, title, hwnd
+    return _get_foreground_window_info(window)
 
 
 def _get_interactive_window_rect(window=None) -> tuple[Rect, str]:
+    rect, title, _hwnd = _get_interactive_window_info(window)
+    return rect, title
+
+
+def _get_interactive_window_info(window=None):
     try:
         user32 = ctypes.windll.user32
-        result = {"rect": Rect(), "title": ""}
+        result = {"rect": Rect(), "title": "", "hwnd": None}
         callback_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
 
         def callback(hwnd, _data):
@@ -390,29 +417,35 @@ def _get_interactive_window_rect(window=None) -> tuple[Rect, str]:
             if status == "usable":
                 result["rect"] = rect
                 result["title"] = title
+                result["hwnd"] = hwnd
                 return False
             if status == "invalid":
                 return False
             return True
 
         user32.EnumWindows(callback_type(callback), None)
-        return result["rect"], result["title"]
+        return result["rect"], result["title"], result["hwnd"]
     except Exception:
-        return Rect(), ""
+        return Rect(), "", None
 
 
 def _get_foreground_window_rect(window=None) -> tuple[Rect, str]:
+    rect, title, _hwnd = _get_foreground_window_info(window)
+    return rect, title
+
+
+def _get_foreground_window_info(window=None):
     try:
         user32 = ctypes.windll.user32
         hwnd = user32.GetForegroundWindow()
         if not hwnd:
-            return Rect(), ""
+            return Rect(), "", None
         rect, title, status = _window_candidate(hwnd, window)
         if status == "usable":
-            return rect, title
-        return Rect(), ""
+            return rect, title, hwnd
+        return Rect(), "", None
     except Exception:
-        return Rect(), ""
+        return Rect(), "", None
 
 
 def _window_candidate(hwnd, window=None, allow_maximized: bool = False) -> tuple[Rect, str, str]:
@@ -441,6 +474,26 @@ def _window_candidate(hwnd, window=None, allow_maximized: bool = False) -> tuple
         return rect, title, "usable"
     except Exception:
         return Rect(), "", "skip"
+
+
+def _move_window_rect(hwnd, rect: Rect) -> bool:
+    if not hwnd or not rect.visible:
+        return False
+    try:
+        flags = 0x0004 | 0x0010  # SWP_NOZORDER | SWP_NOACTIVATE
+        return bool(
+            ctypes.windll.user32.SetWindowPos(
+                ctypes.c_void_p(hwnd),
+                None,
+                int(rect.left),
+                int(rect.top),
+                int(rect.width),
+                int(rect.height),
+                flags,
+            )
+        )
+    except Exception:
+        return False
 
 
 def _window_title(hwnd) -> str:

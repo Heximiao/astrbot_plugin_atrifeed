@@ -126,10 +126,7 @@ class PetApiServer:
             return "嗯，我在这里。现在先陪你待一会儿。"
 
     async def _call_llm(self, prompt: str) -> str:
-        provider_id = None
-        provider = getattr(self.plugin.context, "get_using_provider", lambda: None)()
-        if provider:
-            provider_id = getattr(provider, "id", None) or getattr(provider, "provider_id", None)
+        provider_id = await self._get_chat_provider_id()
         response = await self.plugin.context.llm_generate(
             chat_provider_id=provider_id,
             prompt=prompt,
@@ -137,3 +134,18 @@ class PetApiServer:
         if isinstance(response, str):
             return response
         return getattr(response, "completion_text", None) or getattr(response, "content", "")
+
+    async def _get_chat_provider_id(self) -> str:
+        conf = self.plugin.config if self.plugin.config else (self.plugin.context.get_config() or {})
+        for key in (
+            "desktop_pet_chat_provider_id",
+            "chat_provider_id",
+            "provider_id",
+            "llm_provider_id",
+        ):
+            value = conf.get(key)
+            if value:
+                return str(value)
+
+        umo = "webchat:FriendMessage:desktop_pet"
+        return await self.plugin.context.get_current_chat_provider_id(umo=umo)

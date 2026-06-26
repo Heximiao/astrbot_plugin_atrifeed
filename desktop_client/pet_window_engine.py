@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
@@ -19,7 +19,12 @@ class PetWindow(tk.Tk):
         self.label.pack()
         self._last_image = None
         self._last_geometry = None
-        self.bubble = tk.Label(self, bg="#fff8d8", fg="#222222", bd=1, relief=tk.SOLID, wraplength=220)
+        self.bubble_window = tk.Toplevel(self)
+        self.bubble_window.withdraw()
+        self.bubble_window.overrideredirect(True)
+        self.bubble_window.attributes("-topmost", True)
+        self.bubble = tk.Label(self.bubble_window, bg="#fff8d8", fg="#222222", bd=1, relief=tk.SOLID)
+        self.bubble.pack()
         self.chat_box = ChatBox(self, api_url, self._on_reply)
 
         self.overrideredirect(True)
@@ -153,6 +158,14 @@ class PetWindow(tk.Tk):
 
     def _on_reply(self, reply: str, action: str):
         self.engine.force_action(action or "idle")
-        self.bubble.configure(text=reply)
-        self.bubble.place(x=0, y=0)
-        self.after(6000, self.bubble.place_forget)
+        wraplength = min(360, max(160, len(reply) * 12))
+        self.bubble.configure(text=reply, wraplength=wraplength, justify=tk.LEFT, padx=8, pady=5)
+        self.bubble.update_idletasks()
+        bubble_width = self.bubble.winfo_reqwidth()
+        bubble_height = self.bubble.winfo_reqheight()
+        x = self.winfo_rootx()
+        y = max(0, self.winfo_rooty() - bubble_height - 8)
+        self.bubble_window.geometry(f"{bubble_width}x{bubble_height}+{x}+{y}")
+        self.bubble_window.deiconify()
+        self.bubble_window.lift()
+        self.after(6000, self.bubble_window.withdraw)

@@ -3,7 +3,7 @@
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
 from drag_controller import DragController
-from menu_labels import menu_label
+from menu_labels import grouped_commands, manual_action_params, menu_label
 from shimeji_runtime import ShimejiRuntime
 
 
@@ -122,15 +122,34 @@ class PetWindow(tk.Tk):
     def _menu(self, event):
         self.engine.manual_commands.capture_environment()
         menu = tk.Menu(self, tearoff=False)
-        for name in self.engine.available_commands():
-            menu.add_command(label=menu_label(name), command=lambda n=name: self._play_manual_action(n))
-        menu.add_separator()
+        action_menu = tk.Menu(menu, tearoff=False)
+        self._populate_action_menu(action_menu)
+        menu.add_cascade(label="动作选项", menu=action_menu)
         menu.add_command(label="聊天", command=self._open_chat)
         menu.add_command(label="退出", command=self.destroy)
         menu.tk_popup(event.x_root, event.y_root)
 
     def _play_manual_action(self, name: str):
-        self.engine.force_manual_command(name)
+        params = self._manual_action_params(name)
+        self.engine.force_manual_command(name, **params)
+
+    def _populate_action_menu(self, menu: tk.Menu):
+        for label, names in grouped_commands(self.engine.available_commands()):
+            self._add_command_group(menu, label, names)
+
+    def _add_command_group(self, menu: tk.Menu, label: str, names: list[str]):
+        group = tk.Menu(menu, tearoff=False)
+        for name in names:
+            group.add_command(label=menu_label(name), command=lambda n=name: self._play_manual_action(n))
+        menu.add_cascade(label=label, menu=group)
+
+    def _manual_action_params(self, name: str) -> dict[str, object]:
+        return manual_action_params(
+            name,
+            self.anchor_point(),
+            self.facing,
+            self.runtime.environment_provider.work_area,
+        )
 
     def _on_reply(self, reply: str, action: str):
         self.engine.force_action(action or "idle")

@@ -18,7 +18,7 @@ from behavior_engine import BehaviorEngine  # noqa: E402
 from behavior.param_normalizer import normalize_params  # noqa: E402
 from environment_provider import Rect  # noqa: E402
 from manual_commands import ManualCommandController  # noqa: E402
-from menu_labels import menu_label  # noqa: E402
+from menu_labels import grouped_commands, manual_action_params, menu_label  # noqa: E402
 from shimeji_actions import ActionDefinition, AnimationDefinition, BehaviorDefinition, FrameDefinition  # noqa: E402
 
 
@@ -216,6 +216,22 @@ class AdvancedActionTests(unittest.TestCase):
     def test_throw_ie_menu_labels_are_chinese(self):
         self.assertEqual(menu_label("IEを右に投げる"), "把IE窗口扔到右边")
         self.assertEqual(menu_label("走ってIEを左に投げる"), "跑过去把IE窗口扔到左边")
+
+    def test_menu_commands_are_grouped_for_manual_menu(self):
+        groups = grouped_commands({"振り向く", "ジャンプ", "壁から落ちる", "つままれる", "Custom"})
+
+        self.assertEqual(groups[0], ("1. 任何时候都能点", ["振り向く"]))
+        self.assertEqual(groups[1], ("2. 需要环境条件", ["壁から落ちる"]))
+        self.assertEqual(groups[2], ("3. 需要参数才有意义", ["ジャンプ"]))
+        self.assertEqual(groups[3], ("4. 其他动作", ["Custom"]))
+
+    def test_manual_jump_params_use_forward_target(self):
+        anchor = SimpleNamespace(x=200, y=300)
+        work_area = SimpleNamespace(left=0, right=800, visible=True)
+
+        params = manual_action_params("ジャンプ", anchor, 1, work_area)
+
+        self.assertEqual(params, {"TargetX": 320, "TargetY": 180})
 
     def test_manual_command_falls_back_to_action_when_same_named_behavior_condition_fails(self):
         eng = engine(DummyWindow())

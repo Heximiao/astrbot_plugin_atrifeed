@@ -12,11 +12,11 @@ class BehaviorLayerApi:
     def __init__(self, engine: "BehaviorEngine"):
         self._engine = engine
 
-    def force_action(self, name: str):
-        self._engine.force_action(name)
+    def force_action(self, name: str, **params):
+        self._engine.force_action(name, **params)
 
-    def force_behavior(self, name: str):
-        self._engine.force_behavior(name)
+    def force_behavior(self, name: str, **params):
+        self._engine.force_behavior(name, **params)
 
     def set_external_state(self, state: dict[str, Any] | None):
         self._engine.set_external_state(state or {})

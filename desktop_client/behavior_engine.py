@@ -108,22 +108,22 @@ class BehaviorEngine:
     def current_snapshot(self) -> dict:
         return build_current_snapshot(self)
 
-    def force_behavior(self, name: str):
+    def force_behavior(self, name: str, **params):
         resolved = self._resolve_name(name)
         if resolved in self.config.behaviors:
             self._trace().forced_behavior(self.tick_count, resolved)
-            self.override_controller.push_behavior(resolved)
+            self.override_controller.push_behavior(resolved, **params)
         elif resolved in self.config.actions:
             self._trace().forced_action(self.tick_count, resolved)
-            self.override_controller.push_action(resolved)
+            self.override_controller.push_action(resolved, **params)
 
-    def force_action(self, name: str):
+    def force_action(self, name: str, **params):
         resolved = self._resolve_name(name)
         self._trace().forced_action(self.tick_count, resolved)
-        self.override_controller.push_action(resolved)
+        self.override_controller.push_action(resolved, **params)
 
-    def force_manual_command(self, name: str):
-        self.manual_commands.force(name)
+    def force_manual_command(self, name: str, **params):
+        self.manual_commands.force(name, **params)
 
     def on_mouse_press(self):
         self.drag_active = True
@@ -156,7 +156,22 @@ class BehaviorEngine:
         request = self.override_controller.pop()
         if request:
             if request.kind == "behavior" and request.name in self.config.behaviors:
-                self._set_behavior(self.config.behaviors[request.name], forced=True)
+                behavior = self.config.behaviors[request.name]
+                if request.params:
+                    params = dict(behavior.params)
+                    params.update(request.params)
+                    behavior = BehaviorDefinition(
+                        name=behavior.name,
+                        action_name=behavior.action_name,
+                        frequency=behavior.frequency,
+                        hidden=behavior.hidden,
+                        toggleable=behavior.toggleable,
+                        conditions=behavior.conditions,
+                        params=params,
+                        next_additive=behavior.next_additive,
+                        next_behaviors=behavior.next_behaviors,
+                    )
+                self._set_behavior(behavior, forced=True)
             elif request.kind == "action":
                 action_name = self._resolve_name(request.name)
                 if action_name in self.config.actions:

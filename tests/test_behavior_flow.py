@@ -195,6 +195,35 @@ class BehaviorFlowTests(unittest.TestCase):
         self.assertEqual(engine.debug_trace.events[0].data["mode"], "feedback")
         self.assertEqual(engine.debug_trace.events[1].kind, "forced_action")
 
+    def test_manual_command_passes_params_to_action(self):
+        engine = make_engine()
+
+        engine.force_manual_command("Wave", Duration=42)
+        engine.tick()
+
+        self.assertIsNone(engine.current_behavior)
+        self.assertEqual(engine.current_action_name, "Wave")
+        self.assertEqual(engine.current_action.params["Duration"], 42)
+        self.assertEqual(engine.debug_trace.events[0].data["params"], {"Duration": 42})
+
+    def test_forced_behavior_merges_params(self):
+        engine = make_engine()
+        engine.config.behaviors["Wave"] = BehaviorDefinition(
+            name="Wave",
+            action_name="Wave",
+            frequency=0,
+            hidden=False,
+            toggleable=True,
+            params={"Duration": "100"},
+        )
+
+        engine.force_behavior("Wave", Duration=42)
+        engine.tick()
+
+        self.assertEqual(engine.current_behavior.name, "Wave")
+        self.assertEqual(engine.current_behavior.params["Duration"], 42)
+        self.assertEqual(engine.current_action.params["Duration"], 42)
+
     def test_manual_ie_command_uses_nearest_original_edge_action(self):
         engine = make_engine()
         engine.window.set_anchor(0, 300)

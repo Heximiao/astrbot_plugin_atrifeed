@@ -1,6 +1,94 @@
 from __future__ import annotations
 
 
+ALWAYS_AVAILABLE_COMMANDS = [
+    "振り向く",
+    "立つ",
+    "座る",
+    "寝そべる",
+    "歩く",
+    "走る",
+    "猛ダッシュ",
+    "ずりずり",
+    "跳ねる",
+    "転ぶ",
+    "落ちる",
+    "立ってボーっとする",
+    "座ってボーっとする",
+    "寝そべってボーっとする",
+    "座って足をぶらぶらさせる",
+    "座って首が回る",
+    "マウスの周りに集まる",
+]
+
+ENVIRONMENT_COMMANDS = [
+    "壁に掴まってボーっとする",
+    "壁から落ちる",
+    "天井に掴まってボーっとする",
+    "天井から落ちる",
+    "ワークエリアの下辺を歩く",
+    "ワークエリアの下辺を走る",
+    "ワークエリアの下辺でずりずり",
+    "ワークエリアの下辺の左の端っこで座る",
+    "ワークエリアの下辺の右の端っこで座る",
+    "ワークエリアの下辺から左の壁によじのぼる",
+    "ワークエリアの下辺から右の壁によじのぼる",
+    "走ってワークエリアの下辺の左の端っこで座る",
+    "走ってワークエリアの下辺の右の端っこで座る",
+    "走ってワークエリアの下辺から左の壁によじのぼる",
+    "走ってワークエリアの下辺から右の壁によじのぼる",
+    "ワークエリアの壁を途中まで登る",
+    "ワークエリアの壁を登る",
+    "ワークエリアの上辺を伝う",
+    "左の壁に飛びつく",
+    "右の壁に飛びつく",
+    "IEの下に飛びつく",
+    "IEの天井を歩く",
+    "IEの天井を走る",
+    "IEの天井でずりずり",
+    "IEの天井の左の端っこで座る",
+    "IEの天井の右の端っこで座る",
+    "IEの天井の左の端っこから飛び降りる",
+    "IEの天井の右の端っこから飛び降りる",
+    "走ってIEの天井の左の端っこで座る",
+    "走ってIEの天井の右の端っこで座る",
+    "走ってIEの天井の左の端っこから飛び降りる",
+    "走ってIEの天井の右の端っこから飛び降りる",
+    "猛ダッシュでIEの天井の左の端っこから飛び降りる",
+    "猛ダッシュでIEの天井の右の端っこから飛び降りる",
+    "IEの壁を途中まで登る",
+    "IEの壁を登る",
+    "IEの下辺を伝う",
+    "IEの下辺から左の壁によじのぼる",
+    "IEの下辺から右の壁によじのぼる",
+    "IEの左に飛びつく",
+    "IEの右に飛びつく",
+    "IEを右に投げる",
+    "IEを左に投げる",
+    "走ってIEを右に投げる",
+    "走ってIEを左に投げる",
+]
+
+PARAMETER_COMMANDS = [
+    "ジャンプ",
+    "変位",
+    "IEを投げる",
+    "IEを持って歩く",
+    "IEを持って走る",
+    "IEを持って落ちる",
+]
+
+HIDDEN_MANUAL_COMMANDS = {
+    "つままれる",
+    "抵抗する",
+    "ドラッグされる",
+    "投げられる",
+    "落下する",
+    "引っこ抜く1",
+    "引っこ抜く2",
+    "分裂1",
+}
+
 EXACT_LABELS = {
     "IEを右に投げる": "把IE窗口扔到右边",
     "IEを左に投げる": "把IE窗口扔到左边",
@@ -75,3 +163,50 @@ def menu_label(name: str) -> str:
     for source, target in REPLACEMENTS:
         label = label.replace(source, target)
     return label
+
+
+def grouped_commands(available_commands: list[str] | set[str]) -> list[tuple[str, list[str]]]:
+    available = set(available_commands)
+    used: set[str] = set()
+    groups: list[tuple[str, list[str]]] = []
+    for label, names in (
+        ("1. 任何时候都能点", ALWAYS_AVAILABLE_COMMANDS),
+        ("2. 需要环境条件", ENVIRONMENT_COMMANDS),
+        ("3. 需要参数才有意义", PARAMETER_COMMANDS),
+    ):
+        group = [name for name in names if name in available and name not in HIDDEN_MANUAL_COMMANDS]
+        if group:
+            groups.append((label, group))
+            used.update(group)
+
+    remaining = [
+        name
+        for name in sorted(available)
+        if name not in used and name not in HIDDEN_MANUAL_COMMANDS
+    ]
+    if remaining:
+        groups.append(("4. 其他动作", remaining))
+    return groups
+
+
+def manual_action_params(name: str, anchor, facing: int, work_area) -> dict[str, object]:
+    target_x = anchor.x + (180 if facing > 0 else -180)
+    if getattr(work_area, "visible", False):
+        target_x = max(work_area.left + 64, min(work_area.right - 64, target_x))
+    if name in {"歩く", "ずりずり"}:
+        return {"TargetX": target_x}
+    if name in {"走る", "猛ダッシュ"}:
+        far_x = anchor.x + (320 if facing > 0 else -320)
+        if getattr(work_area, "visible", False):
+            far_x = max(work_area.left + 64, min(work_area.right - 64, far_x))
+        return {"TargetX": far_x}
+    if name == "ジャンプ":
+        jump_x = anchor.x + (120 if facing > 0 else -120)
+        if getattr(work_area, "visible", False):
+            jump_x = max(work_area.left + 64, min(work_area.right - 64, jump_x))
+        return {"TargetX": jump_x, "TargetY": anchor.y - 120}
+    if name == "変位":
+        return {"X": 24 if facing > 0 else -24, "Y": 0}
+    if name in {"IEを持って歩く", "IEを持って走る"}:
+        return {"TargetX": target_x}
+    return {}

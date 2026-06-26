@@ -234,11 +234,12 @@ class EnvironmentProvider:
             self.active_ie_title = ""
             self.active_ie_hwnd = None
 
-    def freeze_active_ie(self, rect: Rect, title: str, ticks: int = 240):
+    def freeze_active_ie(self, rect: Rect, title: str, ticks: int = 240, hwnd=None):
         if not rect.visible:
             return
         self.active_ie.update_from(rect.copy())
         self.active_ie_title = title
+        self.active_ie_hwnd = hwnd
         self._active_ie_freeze_ticks = max(1, int(ticks))
 
     def move_active_ie(self, left: int, top: int) -> bool:
@@ -425,7 +426,7 @@ def _get_foreground_window_info(window=None):
         return Rect(), "", None
 
 
-def _window_candidate(hwnd, window=None, allow_maximized: bool = False) -> tuple[Rect, str, str]:
+def _window_candidate(hwnd, window=None) -> tuple[Rect, str, str]:
     try:
         user32 = ctypes.windll.user32
         if not hwnd or not user32.IsWindowVisible(ctypes.c_void_p(hwnd)):
@@ -434,7 +435,7 @@ def _window_candidate(hwnd, window=None, allow_maximized: bool = False) -> tuple
             return Rect(), "", "skip"
         if user32.IsIconic(ctypes.c_void_p(hwnd)):
             return Rect(), "", "skip"
-        if not allow_maximized and user32.IsZoomed(ctypes.c_void_p(hwnd)):
+        if user32.IsZoomed(ctypes.c_void_p(hwnd)):
             return Rect(), "", "invalid"
         title = _window_title(hwnd)
         if not _title_is_interactive(title):

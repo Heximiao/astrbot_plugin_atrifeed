@@ -1,4 +1,5 @@
 import tkinter as tk
+import logging
 
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
@@ -6,10 +7,16 @@ from drag_controller import DragController
 from menu_labels import grouped_commands, manual_action_params, menu_label
 from shimeji_runtime import ShimejiRuntime
 
+try:
+    from ui.qt_overlay import QtOverlayClient
+except Exception:
+    QtOverlayClient = None
+
 
 TRANSPARENT_COLOR = "#ff00ff"
 EDGE_BLEND_COLOR = "#f4f4f4"
 ALPHA_VISIBLE_THRESHOLD = 36
+LOGGER = logging.getLogger("atri_pet")
 
 
 class PetWindow(tk.Tk):
@@ -25,7 +32,16 @@ class PetWindow(tk.Tk):
         self.bubble_window.attributes("-topmost", True)
         self.bubble = tk.Label(self.bubble_window, bg="#fff8d8", fg="#222222", bd=1, relief=tk.SOLID)
         self.bubble.pack()
+        self._bubble_visible_until = 0.0
         self.chat_box = ChatBox(self, api_url, self._on_reply)
+        self.overlay = None
+        if QtOverlayClient:
+            self.overlay = QtOverlayClient(api_url, self._on_reply, self._on_overlay_command)
+            if not self.overlay.start():
+                LOGGER.info("qt overlay unavailable, falling back to tkinter ui")
+                self.overlay = None
+            else:
+                LOGGER.info("qt overlay started")
 
         self.overrideredirect(True)
         self.attributes("-topmost", True)
@@ -51,6 +67,7 @@ class PetWindow(tk.Tk):
         self.geometry("+100+300")
         self.after(50, self.engine.preload_all_images)
         self.after(1000, self._fetch_state)
+        self.after(30, self._poll_overlay)
         self.after(TICK_MS, self._tick)
 
     def load_image(self, path: str, mirrored: bool = False):
@@ -106,6 +123,7 @@ class PetWindow(tk.Tk):
 
     def _tick(self):
         self.engine.tick()
+        self._sync_overlay_bubble()
         self.after(TICK_MS, self._tick)
 
     def _fetch_state(self):
@@ -122,10 +140,20 @@ class PetWindow(tk.Tk):
         self.after(30000, self._fetch_state)
 
     def _open_chat(self, _=None):
+        if self._overlay_available():
+            self.overlay.show_chat(self.winfo_x(), max(0, self.winfo_y() - 120))
+            return
         self.chat_box.open_near(self.winfo_x(), max(0, self.winfo_y() - 120))
 
     def _menu(self, event):
         self.engine.manual_commands.capture_environment()
+        if self._overlay_available():
+            groups = [
+                (label, [(name, menu_label(name)) for name in names])
+                for label, names in grouped_commands(self.engine.available_commands())
+            ]
+            self.overlay.show_menu(event.x_root, event.y_root, groups)
+            return
         menu = tk.Menu(self, tearoff=False)
         action_menu = tk.Menu(menu, tearoff=False)
         self._populate_action_menu(action_menu)
@@ -137,6 +165,27 @@ class PetWindow(tk.Tk):
     def _play_manual_action(self, name: str):
         params = self._manual_action_params(name)
         self.engine.force_manual_command(name, **params)
+
+    def _on_overlay_command(self, name: str):
+        if name == "__quit__":
+            self.destroy()
+            return
+        if name:
+            self._play_manual_action(name)
+
+    def _poll_overlay(self):
+        if self._overlay_available():
+            self.overlay.poll()
+        self.after(30, self._poll_overlay)
+
+    def _overlay_available(self) -> bool:
+        if not self.overlay or not self.overlay.available:
+            return False
+        if not self.overlay.is_running():
+            LOGGER.warning("qt overlay stopped, falling back to tkinter ui")
+            self.overlay.available = False
+            return False
+        return True
 
     def _populate_action_menu(self, menu: tk.Menu):
         for label, names in grouped_commands(self.engine.available_commands()):
@@ -158,6 +207,12 @@ class PetWindow(tk.Tk):
 
     def _on_reply(self, reply: str, action: str):
         self.engine.force_action(action or "idle")
+        if self._overlay_available():
+            import time
+
+            self._bubble_visible_until = time.monotonic() + 6
+            self.overlay.show_bubble(reply, self.winfo_rootx(), self.winfo_rooty())
+            return
         wraplength = min(360, max(160, len(reply) * 12))
         self.bubble.configure(text=reply, wraplength=wraplength, justify=tk.LEFT, padx=8, pady=5)
         self.bubble.update_idletasks()
@@ -169,3 +224,18 @@ class PetWindow(tk.Tk):
         self.bubble_window.deiconify()
         self.bubble_window.lift()
         self.after(6000, self.bubble_window.withdraw)
+
+    def _sync_overlay_bubble(self):
+        if not self._overlay_available() or self._bubble_visible_until <= 0:
+            return
+        import time
+
+        if time.monotonic() >= self._bubble_visible_until:
+            self._bubble_visible_until = 0
+            return
+        self.overlay.move_bubble(self.winfo_rootx(), self.winfo_rooty())
+
+    def destroy(self):
+        if self.overlay:
+            self.overlay.stop()
+        super().destroy()

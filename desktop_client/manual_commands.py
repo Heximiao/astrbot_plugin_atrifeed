@@ -3,6 +3,7 @@ class ManualCommandController:
         self.engine = engine
         self._cached_active_ie = None
         self._cached_active_ie_title = ""
+        self._cached_active_ie_hwnd = None
 
     def capture_environment(self):
         provider = self.engine.window.runtime.environment_provider
@@ -10,6 +11,7 @@ class ManualCommandController:
         if not active_ie.visible:
             self._cached_active_ie = None
             self._cached_active_ie_title = ""
+            self._cached_active_ie_hwnd = None
             return
         self._cached_active_ie = type(active_ie)(
             left=active_ie.left,
@@ -18,6 +20,7 @@ class ManualCommandController:
             bottom=active_ie.bottom,
         )
         self._cached_active_ie_title = getattr(provider, "active_ie_title", "")
+        self._cached_active_ie_hwnd = getattr(provider, "active_ie_hwnd", None)
 
     def force(self, name: str, **params):
         self._restore_cached_environment()
@@ -104,4 +107,4 @@ class ManualCommandController:
         provider = self.engine.window.runtime.environment_provider
         freeze = getattr(provider, "freeze_active_ie", None)
         if freeze is not None:
-            freeze(self._cached_active_ie, self._cached_active_ie_title)
+            freeze(self._cached_active_ie, self._cached_active_ie_title, hwnd=self._cached_active_ie_hwnd)

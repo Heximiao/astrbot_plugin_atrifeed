@@ -4,9 +4,7 @@
 
 基于AstrBot框架开发的高性能机器人互动插件。通过记录群内成员与亚托莉的互动数据，实现投喂、羁绊养成、黑名单惩罚等功能，并生成精美的个人羁绊名片。
 
-目前还处于测试阶段，还有很多功能需要添加，有可能会发生较大变动。如发现问题或者有有趣的想法欢迎提issue！
-
-请注意：2026.3.5号之前有使用此插件的更新会导致历史记录丢失。如果报错，请关闭bot删除数据库再重载插件
+> 关于桌宠：如果想要使用新的较为美观的UI，请点击左侧的平台日志，然后点击右上角的安装pip库，输入```PySide6```，astrbot可能不会自动下载此依赖
 
 ## ✨ 功能亮点
 
@@ -198,7 +196,7 @@ astrbot_plugin_atrifeed/
 本项目的开发离不开以下开源项目与社区的支持：
 
 * **[AstrBot](https://github.com/astrbotdevs/astrbot)**：感谢 Soulter 提供的强大且易用的生态框架。
-* **[星火燃愿]**：感谢星火燃愿提供的巡礼图片的处理支持
+* **星火燃愿**：感谢星火燃愿提供的巡礼图片的处理支持
 * **[Furina010013](https://github.com/Furina010013)**:感谢提供的代码贡献支持
 * **[Bing2Na冰](https://space.bilibili.com/34884714?spm_id_from=333.788.upinfo.detail.click)**：感谢Bing2Na冰提供亚托莉桌宠的思路与素材
 * **[shimeji](https://kilkakon.com/shimeji/)**：感谢shimeji引擎提供的源代码参考

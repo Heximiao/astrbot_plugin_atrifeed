@@ -50,6 +50,7 @@ class DummyEnvironmentProvider:
         self.window = window
         self.active_ie = active_ie
         self.active_ie_title = "Editor"
+        self.active_ie_hwnd = 1001
         self.work_area = Rect(left=0, top=0, right=800, bottom=580)
         self.move_calls = []
 
@@ -65,9 +66,10 @@ class DummyEnvironmentProvider:
     def wall_border(self, look_right, ignore_separator=False):
         return self.work_area.rightBorder if look_right else self.work_area.leftBorder
 
-    def freeze_active_ie(self, rect, title, ticks=4):
+    def freeze_active_ie(self, rect, title, ticks=4, hwnd=None):
         self.active_ie.update_from(rect)
         self.active_ie_title = title
+        self.active_ie_hwnd = hwnd
 
     def move_active_ie(self, left, top):
         self.move_calls.append((left, top))
@@ -258,6 +260,20 @@ class AdvancedActionTests(unittest.TestCase):
         ManualCommandController(eng).force("IEを右に投げる")
 
         self.assertEqual(pushed, ["IEを右に投げる"])
+
+    def test_manual_command_restores_cached_active_ie_hwnd(self):
+        active_ie = Rect(left=100, top=100, right=300, bottom=240)
+        win = DummyWindow(active_ie=active_ie)
+        provider = win.runtime.environment_provider
+        provider.active_ie_hwnd = 4242
+        eng = engine(win)
+        controller = ManualCommandController(eng)
+
+        controller.capture_environment()
+        provider.active_ie_hwnd = None
+        controller._restore_cached_environment()
+
+        self.assertEqual(provider.active_ie_hwnd, 4242)
 
 
 if __name__ == "__main__":

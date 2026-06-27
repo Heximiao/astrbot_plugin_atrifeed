@@ -52,22 +52,30 @@ class DesktopPetService:
             env = os.environ.copy()
             env["ATRI_PET_ASSET_DIR"] = str(ASSET_DIR)
             env["ATRI_PET_API"] = f"http://127.0.0.1:{api_port}"
-            env["ATRI_PET_DEBUG_TRACE"] = "1" if conf.get("desktop_pet_debug_trace", False) else "0"
             env["PYTHONUTF8"] = "1"
             env["PYTHONIOENCODING"] = "utf-8"
 
-            log_path = Path(self.plugin.data_dir) / "desktop_pet_client.log"
-            self.log_file = open(log_path, "ab")
+            debug_trace_enabled = conf.get("desktop_pet_debug_trace", False)
+            log_path = None
+            stdout = stderr = subprocess.DEVNULL
+            if debug_trace_enabled:
+                env["ATRI_PET_DEBUG_TRACE"] = "1"
+                log_path = Path(self.plugin.data_dir) / "desktop_pet_client.log"
+                self.log_file = open(log_path, "ab")
+                stdout = stderr = self.log_file
+
             self.process = subprocess.Popen(
                 [sys.executable, "-X", "utf8", str(client_entry)],
                 cwd=str(curr_dir),
                 env=env,
-                stdout=self.log_file,
-                stderr=self.log_file,
+                stdout=stdout,
+                stderr=stderr,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
 
             time.sleep(0.5)
+            if not log_path:
+                return
             if self.process.poll() is not None:
                 logger.warning(f"[Atri] 桌宠客户端启动后立即退出，请查看日志: {log_path}")
             else:

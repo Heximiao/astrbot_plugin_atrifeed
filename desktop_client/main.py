@@ -12,7 +12,7 @@ def configure_logging(debug_trace_enabled: bool):
 
     logging.basicConfig(level=logging.WARNING)
 
-    level = logging.DEBUG if debug_trace_enabled else logging.INFO
+    level = logging.DEBUG if debug_trace_enabled else logging.WARNING
     logger = logging.getLogger("atri_pet")
     logger.handlers.clear()
     logger.addHandler(handler)
@@ -26,7 +26,8 @@ def main():
     api_url = os.environ.get("ATRI_PET_API", "http://127.0.0.1:47821")
     debug_trace_enabled = os.environ.get("ATRI_PET_DEBUG_TRACE", "").lower() in {"1", "true", "yes", "on"}
     configure_logging(debug_trace_enabled)
-    logging.getLogger("atri_pet").info("desktop pet client starting, debug_trace=%s", debug_trace_enabled)
+    if debug_trace_enabled:
+        logging.getLogger("atri_pet").debug("desktop pet client starting, debug_trace=%s", debug_trace_enabled)
     if not Path(asset_dir).exists():
         raise SystemExit(f"ATRI pet assets not found: {asset_dir}")
     app = PetWindow(asset_dir, api_url, debug_trace_enabled=debug_trace_enabled)

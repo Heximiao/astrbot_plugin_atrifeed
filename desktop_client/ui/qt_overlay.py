@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import multiprocessing as mp
 import os
 import queue
@@ -337,19 +336,6 @@ class _UserWindow(QWidget):
     def _request_save(self, user_id: str):
         try:
             ok, reply, _user_id = save_pet_user(self.api_url, user_id)
-            self.done.put({"ok": ok, "reply": reply})
-            return
-            payload = json.dumps({"user_id": user_id}, ensure_ascii=False).encode("utf-8")
-            req = urllib.request.Request(
-                f"{self.api_url}/pet/user",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            ok = bool(data.get("ok"))
-            reply = "已保存桌宠 QQ。" if ok else data.get("error", "QQ 号保存失败。")
         except Exception:
             ok = False
             reply = "Cannot connect to plugin service right now."
@@ -358,9 +344,6 @@ class _UserWindow(QWidget):
     def _current_user_id(self) -> str:
         try:
             return get_pet_user(self.api_url)
-            with urllib.request.urlopen(f"{self.api_url}/pet/user", timeout=3) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            return data.get("user_id", "") or ""
         except Exception:
             return ""
 

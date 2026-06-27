@@ -84,14 +84,21 @@ class ManualCommandController:
         return None
 
     def _push_behavior(self, name: str, mode: str, params: dict[str, object] | None = None):
-        self._trace(name, mode=mode, params=params or {})
-        self.engine._trace().forced_behavior(self.engine.tick_count, name)
-        self.engine.override_controller.push_behavior(name, **(params or {}))
+        self._push_override("behavior", name, mode, params)
 
     def _push_action(self, name: str, mode: str, params: dict[str, object] | None = None):
+        self._push_override("action", name, mode, params)
+
+    def _push_override(self, kind: str, name: str, mode: str, params: dict[str, object] | None = None):
         self._trace(name, mode=mode, params=params or {})
-        self.engine._trace().forced_action(self.engine.tick_count, name)
-        self.engine.override_controller.push_action(name, **(params or {}))
+        trace = self.engine._trace()
+        override = self.engine.override_controller
+        if kind == "behavior":
+            trace.forced_behavior(self.engine.tick_count, name)
+            override.push_behavior(name, **(params or {}))
+        else:
+            trace.forced_action(self.engine.tick_count, name)
+            override.push_action(name, **(params or {}))
 
     def _trace(self, name: str, **data):
         self.engine._trace().record(

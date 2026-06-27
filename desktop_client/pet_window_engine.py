@@ -1,12 +1,11 @@
 import tkinter as tk
 import logging
-import json
-import urllib.request
 
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
 from drag_controller import DragController
 from menu_labels import grouped_commands, manual_action_params, menu_label
+from pet_api_client import get_json, get_pet_user, save_pet_user
 from shimeji_runtime import ShimejiRuntime
 
 try:
@@ -133,8 +132,7 @@ class PetWindow(tk.Tk):
 
     def _fetch_state(self):
         try:
-            with urllib.request.urlopen(f"{self.api_url}/pet/state", timeout=3) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            data = get_json(self.api_url, "/pet/state", timeout=3)
             self.mood = data.get("mood", self.mood)
             self.engine.set_external_state(data)
         except Exception:
@@ -190,9 +188,7 @@ class PetWindow(tk.Tk):
 
     def _fetch_user(self):
         try:
-            with urllib.request.urlopen(f"{self.api_url}/pet/user", timeout=3) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            self.pet_user_id = data.get("user_id", "") or ""
+            self.pet_user_id = get_pet_user(self.api_url)
         except Exception:
             pass
 
@@ -203,18 +199,8 @@ class PetWindow(tk.Tk):
             ok = False
             reply = ""
             try:
-                payload = json.dumps({"user_id": user_id}, ensure_ascii=False).encode("utf-8")
-                req = urllib.request.Request(
-                    f"{self.api_url}/pet/user",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                ok = bool(data.get("ok"))
-                self.pet_user_id = data.get("user_id", "") or self.pet_user_id
-                reply = "已保存桌宠 QQ。" if ok else data.get("error", "QQ 号保存失败。")
+                ok, reply, saved_user_id = save_pet_user(self.api_url, user_id)
+                self.pet_user_id = saved_user_id or self.pet_user_id
             except Exception:
                 reply = "Cannot connect to plugin service right now."
             self.after(0, self._finish_save_user_id, ok, reply, on_done)

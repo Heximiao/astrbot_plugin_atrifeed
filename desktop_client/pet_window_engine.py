@@ -1,5 +1,7 @@
 import tkinter as tk
 import logging
+import json
+import urllib.request
 
 from behavior_engine import BehaviorEngine, TICK_MS
 from chat_box_v2 import ChatBox
@@ -33,7 +35,9 @@ class PetWindow(tk.Tk):
         self.bubble = tk.Label(self.bubble_window, bg="#fff8d8", fg="#222222", bd=1, relief=tk.SOLID)
         self.bubble.pack()
         self._bubble_visible_until = 0.0
-        self.chat_box = ChatBox(self, api_url, self._on_reply)
+        self.api_url = api_url.rstrip("/")
+        self.pet_user_id = ""
+        self.chat_box = ChatBox(self, api_url, self._on_reply, self._get_pet_user_id)
         self.overlay = None
         if QtOverlayClient:
             self.overlay = QtOverlayClient(api_url, self._on_reply, self._on_overlay_command)
@@ -66,6 +70,7 @@ class PetWindow(tk.Tk):
 
         self.geometry("+100+300")
         self.after(50, self.engine.preload_all_images)
+        self.after(300, self._fetch_user)
         self.after(1000, self._fetch_state)
         self.after(30, self._poll_overlay)
         self.after(TICK_MS, self._tick)
@@ -127,11 +132,8 @@ class PetWindow(tk.Tk):
         self.after(TICK_MS, self._tick)
 
     def _fetch_state(self):
-        import json
-        import urllib.request
-
         try:
-            with urllib.request.urlopen(f"{self.chat_box.api_url}/pet/state", timeout=3) as resp:
+            with urllib.request.urlopen(f"{self.api_url}/pet/state", timeout=3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             self.mood = data.get("mood", self.mood)
             self.engine.set_external_state(data)
@@ -147,14 +149,18 @@ class PetWindow(tk.Tk):
 
     def _menu(self, event):
         self.engine.manual_commands.capture_environment()
+        self._fetch_user()
         if self._overlay_available():
             groups = [
                 (label, [(name, menu_label(name)) for name in names])
                 for label, names in grouped_commands(self.engine.available_commands())
             ]
-            self.overlay.show_menu(event.x_root, event.y_root, groups)
+            self.overlay.show_menu(event.x_root, event.y_root, groups, self.pet_user_id)
             return
         menu = tk.Menu(self, tearoff=False)
+        user_menu = tk.Menu(menu, tearoff=False)
+        self._populate_user_menu(user_menu)
+        menu.add_cascade(label="桌宠 QQ", menu=user_menu)
         action_menu = tk.Menu(menu, tearoff=False)
         self._populate_action_menu(action_menu)
         menu.add_cascade(label="动作选项", menu=action_menu)
@@ -170,8 +176,57 @@ class PetWindow(tk.Tk):
         if name == "__quit__":
             self.destroy()
             return
+        if name == "__set_user_id__":
+            self._open_user_dialog()
+            return
+        if name == "__refresh_user_id__":
+            self._fetch_user()
+            return
         if name:
             self._play_manual_action(name)
+
+    def _get_pet_user_id(self) -> str:
+        return self.pet_user_id
+
+    def _fetch_user(self):
+        try:
+            with urllib.request.urlopen(f"{self.api_url}/pet/user", timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            self.pet_user_id = data.get("user_id", "") or ""
+        except Exception:
+            pass
+
+    def _save_user_id(self, user_id: str, on_done=None):
+        import threading
+
+        def worker():
+            ok = False
+            reply = ""
+            try:
+                payload = json.dumps({"user_id": user_id}, ensure_ascii=False).encode("utf-8")
+                req = urllib.request.Request(
+                    f"{self.api_url}/pet/user",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                ok = bool(data.get("ok"))
+                self.pet_user_id = data.get("user_id", "") or self.pet_user_id
+                reply = "已保存桌宠 QQ。" if ok else data.get("error", "QQ 号保存失败。")
+            except Exception:
+                reply = "Cannot connect to plugin service right now."
+            self.after(0, self._finish_save_user_id, ok, reply, on_done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_save_user_id(self, ok: bool, reply: str, on_done):
+        if on_done:
+            on_done(ok, reply)
+        self._on_reply(reply, "idle")
+        if ok:
+            self._fetch_state()
 
     def _poll_overlay(self):
         if self._overlay_available():
@@ -190,6 +245,29 @@ class PetWindow(tk.Tk):
     def _populate_action_menu(self, menu: tk.Menu):
         for label, names in grouped_commands(self.engine.available_commands()):
             self._add_command_group(menu, label, names)
+
+    def _populate_user_menu(self, menu: tk.Menu):
+        menu.add_command(label="当前 QQ：" + (self.pet_user_id or "未填写"), state=tk.DISABLED)
+        menu.add_separator()
+        menu.add_command(label="填写/修改 QQ", command=self._open_user_dialog)
+
+    def _open_user_dialog(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("桌宠 QQ")
+        dialog.resizable(False, False)
+        dialog.attributes("-topmost", True)
+        dialog.geometry(f"280x92+{self.winfo_rootx()}+{max(0, self.winfo_rooty() - 100)}")
+        entry = tk.Entry(dialog, font=("Microsoft YaHei UI", 10))
+        entry.insert(0, self.pet_user_id)
+        entry.pack(fill=tk.X, padx=10, pady=(10, 6))
+
+        def save():
+            self._save_user_id(entry.get().strip(), lambda ok, _reply: dialog.destroy() if ok else None)
+
+        button = tk.Button(dialog, text="保存", command=save)
+        button.pack(anchor=tk.E, padx=10)
+        entry.bind("<Return>", lambda _event: save())
+        entry.focus_set()
 
     def _add_command_group(self, menu: tk.Menu, label: str, names: list[str]):
         group = tk.Menu(menu, tearoff=False)

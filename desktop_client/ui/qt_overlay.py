@@ -5,7 +5,6 @@ import multiprocessing as mp
 import os
 import queue
 import threading
-import urllib.request
 
 from PySide6.QtCore import Qt, QTimer, QPoint
 from PySide6.QtGui import QAction, QCursor
@@ -21,6 +20,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from pet_api_client import get_pet_user, request_chat, save_pet_user
 
 
 class QtOverlayClient:
@@ -69,8 +70,8 @@ class QtOverlayClient:
     def move_bubble(self, x: int, y: int):
         self._send({"kind": "bubble_move", "x": x, "y": y})
 
-    def show_menu(self, x: int, y: int, groups: list[tuple[str, list[tuple[str, str]]]]):
-        self._send({"kind": "menu", "x": x, "y": y, "groups": groups})
+    def show_menu(self, x: int, y: int, groups: list[tuple[str, list[tuple[str, str]]]], user_id: str = ""):
+        self._send({"kind": "menu", "x": x, "y": y, "groups": groups, "user_id": user_id})
 
     def stop(self):
         self._send({"kind": "quit"})
@@ -93,6 +94,7 @@ def _run_qt_overlay(api_url: str, events: mp.Queue, results: mp.Queue):
     app.setStyleSheet(_STYLE)
 
     chat = _ChatWindow(api_url, results)
+    user_editor = _UserWindow(api_url, results)
     bubble = _BubbleWindow()
     active_menus = []
     outside_click = _OutsideClickWatcher()
@@ -104,6 +106,11 @@ def _run_qt_overlay(api_url: str, events: mp.Queue, results: mp.Queue):
         menu.aboutToHide.connect(lambda m=menu: _release_menu(active_menus, m))
         menu.addAction("聊天").triggered.connect(
             lambda: chat.show_near(event.get("x", 100), max(0, event.get("y", 100) - 118))
+        )
+        user_id = event.get("user_id", "") or ""
+        menu.addAction("当前 QQ：" + (user_id or "未填写")).setEnabled(False)
+        menu.addAction("填写/修改 QQ").triggered.connect(
+            lambda uid=user_id: user_editor.show_near(event.get("x", 100), max(0, event.get("y", 100) - 118), uid)
         )
         menu.addSeparator()
         for group_label, items in event.get("groups", []):
@@ -149,6 +156,7 @@ def _run_qt_overlay(api_url: str, events: mp.Queue, results: mp.Queue):
             elif kind == "quit":
                 app.quit()
         chat.poll_done()
+        user_editor.poll_done()
 
     timer = QTimer()
     timer.timeout.connect(pump)
@@ -203,6 +211,7 @@ class _ChatWindow(QWidget):
         self.results = results
         self.done: queue.Queue = queue.Queue()
         self.busy = False
+        self.user_id = ""
         self.setWindowTitle("ATRI")
         self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -231,6 +240,7 @@ class _ChatWindow(QWidget):
         self.resize(390, 112)
 
     def show_near(self, x: int, y: int):
+        self._refresh_user_id()
         self.move(x, max(0, y))
         self.show()
         self.raise_()
@@ -243,25 +253,21 @@ class _ChatWindow(QWidget):
             return
         self.entry.clear()
         self._set_busy(True)
-        threading.Thread(target=self._request_reply, args=(text,), daemon=True).start()
+        threading.Thread(target=self._request_chat_worker, args=(text,), daemon=True).start()
 
-    def _request_reply(self, message: str):
+    def _request_chat_worker(self, message: str):
         try:
-            payload = json.dumps({"message": message}, ensure_ascii=False).encode("utf-8")
-            req = urllib.request.Request(
-                f"{self.api_url}/pet/chat",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=50) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            reply = data.get("reply") or "OK."
-            action = data.get("action") or "idle"
+            reply, action = request_chat(self.api_url, message, self.user_id)
         except Exception:
             reply = "Cannot connect to plugin service right now."
             action = "sit"
         self.done.put({"kind": "reply", "reply": reply, "action": action})
+
+    def _refresh_user_id(self):
+        try:
+            self.user_id = get_pet_user(self.api_url)
+        except Exception:
+            pass
 
     def poll_done(self):
         while True:
@@ -278,8 +284,106 @@ class _ChatWindow(QWidget):
         self.button.setText("..." if busy else "发送")
 
 
+class _UserWindow(QWidget):
+    def __init__(self, api_url: str, results: mp.Queue):
+        super().__init__()
+
+        self.api_url = api_url
+        self.results = results
+        self.done: queue.Queue = queue.Queue()
+        self.busy = False
+        self.setWindowTitle("桌宠 QQ")
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(10, 10, 10, 10)
+        panel = QFrame()
+        panel.setObjectName("panel")
+        root.addWidget(panel)
+
+        box = QVBoxLayout(panel)
+        box.setContentsMargins(14, 12, 14, 14)
+        box.setSpacing(10)
+        title_bar = _TitleBar(self, title_text="桌宠 QQ")
+        self.entry = QLineEdit()
+        self.entry.setPlaceholderText("填写使用桌宠的 QQ 号")
+        self.entry.returnPressed.connect(self.save)
+        self.button = QPushButton("保存")
+        self.button.clicked.connect(self.save)
+
+        row = QHBoxLayout()
+        row.addWidget(self.entry, 1)
+        row.addWidget(self.button)
+        box.addWidget(title_bar)
+        box.addLayout(row)
+        self.resize(360, 112)
+
+    def show_near(self, x: int, y: int, user_id: str = ""):
+        self.entry.setText(user_id or self._current_user_id())
+        self.move(x, max(0, y))
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.entry.setFocus()
+        self.entry.selectAll()
+
+    def save(self):
+        if self.busy:
+            return
+        self._set_busy(True)
+        threading.Thread(target=self._request_save, args=(self.entry.text().strip(),), daemon=True).start()
+
+    def _request_save(self, user_id: str):
+        try:
+            ok, reply, _user_id = save_pet_user(self.api_url, user_id)
+            self.done.put({"ok": ok, "reply": reply})
+            return
+            payload = json.dumps({"user_id": user_id}, ensure_ascii=False).encode("utf-8")
+            req = urllib.request.Request(
+                f"{self.api_url}/pet/user",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            ok = bool(data.get("ok"))
+            reply = "已保存桌宠 QQ。" if ok else data.get("error", "QQ 号保存失败。")
+        except Exception:
+            ok = False
+            reply = "Cannot connect to plugin service right now."
+        self.done.put({"ok": ok, "reply": reply})
+
+    def _current_user_id(self) -> str:
+        try:
+            return get_pet_user(self.api_url)
+            with urllib.request.urlopen(f"{self.api_url}/pet/user", timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return data.get("user_id", "") or ""
+        except Exception:
+            return ""
+
+    def poll_done(self):
+        while True:
+            try:
+                event = self.done.get_nowait()
+            except queue.Empty:
+                break
+            self._set_busy(False)
+            if event.get("ok"):
+                self.hide()
+                self.results.put({"kind": "command", "name": "__refresh_user_id__"})
+            self.results.put({"kind": "reply", "reply": event.get("reply", ""), "action": "idle"})
+
+    def _set_busy(self, busy: bool):
+        self.busy = busy
+        self.button.setEnabled(not busy)
+        self.button.setText("..." if busy else "保存")
+
+
 class _TitleBar(QWidget):
-    def __init__(self, window: QWidget):
+    def __init__(self, window: QWidget, title_text: str = "ATRI"):
         super().__init__(window)
         self.window = window
         self._drag_offset = None
@@ -288,7 +392,7 @@ class _TitleBar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("ATRI")
+        title = QLabel(title_text)
         title.setObjectName("title")
         close_button = QToolButton()
         close_button.setObjectName("closeButton")

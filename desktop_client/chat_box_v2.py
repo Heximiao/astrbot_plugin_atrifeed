@@ -1,14 +1,15 @@
-import json
 import threading
 import tkinter as tk
-import urllib.request
+
+from pet_api_client import request_chat
 
 
 class ChatBox(tk.Toplevel):
-    def __init__(self, master, api_url: str, on_reply):
+    def __init__(self, master, api_url: str, on_reply, get_user_id=None):
         super().__init__(master)
         self.api_url = api_url.rstrip("/")
         self.on_reply = on_reply
+        self.get_user_id = get_user_id
         self._busy = False
         self.title("ATRI")
         self.resizable(False, False)
@@ -36,21 +37,15 @@ class ChatBox(tk.Toplevel):
             return
         self.entry.delete(0, tk.END)
         self._set_busy(True)
-        threading.Thread(target=self._request_reply, args=(message,), daemon=True).start()
+        threading.Thread(target=self._request_chat_worker, args=(message,), daemon=True).start()
 
-    def _request_reply(self, message: str):
+    def _request_chat_worker(self, message: str):
         try:
-            payload = json.dumps({"message": message}, ensure_ascii=False).encode("utf-8")
-            req = urllib.request.Request(
-                f"{self.api_url}/pet/chat",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
+            reply, action = request_chat(
+                self.api_url,
+                message,
+                self.get_user_id() if self.get_user_id else "",
             )
-            with urllib.request.urlopen(req, timeout=50) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            reply = data.get("reply") or "OK."
-            action = data.get("action") or "idle"
         except Exception:
             reply = "Cannot connect to plugin service right now."
             action = "sit"

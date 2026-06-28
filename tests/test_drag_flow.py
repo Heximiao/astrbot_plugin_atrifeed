@@ -10,6 +10,8 @@ sys.path.insert(0, str(ROOT / "desktop_client"))
 from behavior.action_instances import BaseActionInstance  # noqa: E402
 from behavior.behavior_instances import UserBehaviorInstance  # noqa: E402
 from debug_trace import DebugTrace  # noqa: E402
+from drag_controller import DragController  # noqa: E402
+from environment_provider import PointState  # noqa: E402
 from shimeji_actions import ActionDefinition, BehaviorDefinition, ShimejiConfiguration  # noqa: E402
 
 
@@ -68,6 +70,24 @@ class DragFlowTests(unittest.TestCase):
         instance.mouse_released()
 
         self.assertEqual(engine._set_behavior_calls, [])
+
+    def test_drag_release_clamps_instant_throw_velocity(self):
+        cursor = PointState()
+        provider = SimpleNamespace(cursor=cursor)
+        engine = SimpleNamespace(
+            on_mouse_press=lambda: None,
+            on_mouse_release=lambda: None,
+            sync_drag_to_cursor=lambda: None,
+        )
+        window = SimpleNamespace(runtime=SimpleNamespace(environment_provider=provider), engine=engine)
+        controller = DragController(window)
+
+        controller.start(SimpleNamespace(x=0, y=0, x_root=100, y_root=100))
+        controller.drag(SimpleNamespace(x=0, y=0, x_root=180, y_root=40))
+        controller.end(None)
+
+        self.assertEqual(cursor.dx, 48)
+        self.assertEqual(cursor.dy, -48)
 
 
 if __name__ == "__main__":

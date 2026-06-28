@@ -150,40 +150,55 @@ class BehaviorEngine:
         sync(reset_timer=True)
         self._render_current_frame()
 
-    def tick(self):
+    def tick(self, tick_ms: int | None = None):
+        previous_tick_scale = self.tick_scale
+        if tick_ms is not None:
+            self.tick_scale = tick_ms / TICK_MS * TICK_SCALE
         self.tick_count += self.tick_scale
         self.window.runtime.refresh_environment()
-        request = self.override_controller.pop()
-        if request:
-            if request.kind == "behavior" and request.name in self.config.behaviors:
-                behavior = self.config.behaviors[request.name]
-                if request.params:
-                    params = dict(behavior.params)
-                    params.update(request.params)
-                    behavior = BehaviorDefinition(
-                        name=behavior.name,
-                        action_name=behavior.action_name,
-                        frequency=behavior.frequency,
-                        hidden=behavior.hidden,
-                        toggleable=behavior.toggleable,
-                        conditions=behavior.conditions,
-                        params=params,
-                        next_additive=behavior.next_additive,
-                        next_behaviors=behavior.next_behaviors,
-                    )
-                self._set_behavior(behavior, forced=True)
-            elif request.kind == "action":
-                action_name = self._resolve_name(request.name)
-                if action_name in self.config.actions:
-                    self._set_action_behavior(self.config.actions[action_name], request.params)
+        try:
+            request = self.override_controller.pop()
+            if request:
+                if request.kind == "behavior" and request.name in self.config.behaviors:
+                    behavior = self.config.behaviors[request.name]
+                    if request.params:
+                        params = dict(behavior.params)
+                        params.update(request.params)
+                        behavior = BehaviorDefinition(
+                            name=behavior.name,
+                            action_name=behavior.action_name,
+                            frequency=behavior.frequency,
+                            hidden=behavior.hidden,
+                            toggleable=behavior.toggleable,
+                            conditions=behavior.conditions,
+                            params=params,
+                            next_additive=behavior.next_additive,
+                            next_behaviors=behavior.next_behaviors,
+                        )
+                    self._set_behavior(behavior, forced=True)
+                elif request.kind == "action":
+                    action_name = self._resolve_name(request.name)
+                    if action_name in self.config.actions:
+                        self._set_action_behavior(self.config.actions[action_name], request.params)
 
-        if self.current_behavior_instance is None:
-            self._select_next_behavior(None)
             if self.current_behavior_instance is None:
-                return
+                self._select_next_behavior(None)
+                if self.current_behavior_instance is None:
+                    return
 
-        self.current_behavior_instance.next()
-        self._trace_action_if_changed()
+            self.current_behavior_instance.next()
+            self._trace_action_if_changed()
+        finally:
+            self.tick_scale = previous_tick_scale
+
+    def next_tick_ms(self) -> int:
+        action = self.current_action
+        if action is not None:
+            action = self._leaf_action(action)
+        preferred_tick_ms = getattr(action, "preferred_tick_ms", None)
+        if preferred_tick_ms is None:
+            return TICK_MS
+        return max(1, int(preferred_tick_ms()))
 
     def current_frame_anchor(self):
         if self.current_frame:

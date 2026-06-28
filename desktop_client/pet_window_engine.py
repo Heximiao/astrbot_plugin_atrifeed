@@ -72,6 +72,7 @@ class PetWindow(tk.Tk):
         self.after(300, self._fetch_user)
         self.after(1000, self._fetch_state)
         self.after(30, self._poll_overlay)
+        self._next_tick_ms = TICK_MS
         self.after(TICK_MS, self._tick)
 
     def load_image(self, path: str, mirrored: bool = False):
@@ -126,9 +127,10 @@ class PetWindow(tk.Tk):
             self.drag.offset = None
 
     def _tick(self):
-        self.engine.tick()
+        self.engine.tick(self._next_tick_ms)
         self._sync_overlay_bubble()
-        self.after(TICK_MS, self._tick)
+        self._next_tick_ms = self.engine.next_tick_ms()
+        self.after(self._next_tick_ms, self._tick)
 
     def _fetch_state(self):
         try:

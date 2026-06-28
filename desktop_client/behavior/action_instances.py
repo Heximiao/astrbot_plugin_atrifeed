@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from shimeji_actions import ActionCallDefinition, ActionDefinition
 
-from behavior.constants import BORDER_CEILING, BORDER_GROUND, BORDER_WALL
+from behavior.constants import BORDER_CEILING, BORDER_GROUND, BORDER_WALL, FAST_TICK_MS
 from behavior.types import LostGroundError
 
 if TYPE_CHECKING:
@@ -510,6 +510,9 @@ class FallActionInstance(BaseActionInstance):
         super().__init__(engine, definition, params)
         self.vx = float(self.param_value("InitialVX", default=0) or 0)
         self.vy = float(self.param_value("InitialVY", default=0) or 0)
+        anchor = self.engine.window.anchor_point()
+        self.x = float(anchor.x)
+        self.y = float(anchor.y)
 
     def _tick(self):
         gravity = float(self.param_value("Gravity", default=2) or 2)
@@ -526,12 +529,17 @@ class FallActionInstance(BaseActionInstance):
         dx = self.vx * dt
         dy = self.vy * dt
 
-        anchor = self.engine.window.anchor_point()
+        anchor_x = self.x
+        anchor_y = self.y
         steps = max(1, int(max(abs(dx), abs(dy))))
         landed = False
+        final_x = anchor_x + dx
+        final_y = anchor_y + dy
         for step in range(steps + 1):
-            x = anchor.x + dx * step / steps
-            y = anchor.y + dy * step / steps
+            x = anchor_x + dx * step / steps
+            y = anchor_y + dy * step / steps
+            final_x = x
+            final_y = y
             self.engine.window.set_anchor(x, y)
 
             floor = self.engine.window.runtime.environment_provider.floor_border(ignore_separator=True)
@@ -546,6 +554,7 @@ class FallActionInstance(BaseActionInstance):
                     if floor.isOn(self.engine.window.anchor_point()):
                         if hasattr(floor, "y") and floor.y is not None:
                             self.engine.window.set_anchor(x, floor.y)
+                            final_y = float(floor.y)
                         landed = True
                         break
                 if landed:
@@ -556,12 +565,17 @@ class FallActionInstance(BaseActionInstance):
                 landed = True
                 break
 
+        self.x = float(final_x)
+        self.y = float(final_y)
         if landed:
             self.finished = True
             self.engine.mascot_dragging = False
 
     def _has_next(self) -> bool:
         return not self.finished
+
+    def preferred_tick_ms(self) -> int:
+        return FAST_TICK_MS
 
 
 class FallWithIEActionInstance(ActiveIEMixin, FallActionInstance):

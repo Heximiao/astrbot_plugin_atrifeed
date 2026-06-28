@@ -8,13 +8,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "desktop_client"))
 
 from behavior_engine import BehaviorEngine  # noqa: E402
+from behavior.action_instances import FallActionInstance  # noqa: E402
+from behavior.constants import FAST_TICK_MS, TICK_MS  # noqa: E402
 from debug_trace import DebugTrace  # noqa: E402
 from manual_commands import ManualCommandController  # noqa: E402
 from override_controller import OverrideController  # noqa: E402
 from shimeji_actions import (  # noqa: E402
     ActionDefinition,
+    AnimationDefinition,
     BehaviorDefinition,
     BehaviorReferenceDefinition,
+    FrameDefinition,
     ShimejiConfiguration,
 )
 
@@ -32,7 +36,7 @@ def make_engine():
         facing = -1
 
         def __init__(self):
-            def freeze_active_ie(rect, title, ticks=240):
+            def freeze_active_ie(rect, title, ticks=240, hwnd=None):
                 provider.active_ie = SimpleNamespace(
                     left=rect.left,
                     top=rect.top,
@@ -41,6 +45,7 @@ def make_engine():
                     visible=True,
                 )
                 provider.active_ie_title = title
+                provider.active_ie_hwnd = hwnd
                 provider.freeze_ticks = ticks
 
             provider = SimpleNamespace(
@@ -264,6 +269,37 @@ class BehaviorFlowTests(unittest.TestCase):
 
         self.assertEqual(engine.window.runtime.state_vars["mood"], "happy")
         self.assertEqual(engine.debug_trace.events[0].kind, "forced_action")
+
+    def test_fall_action_requests_fast_tick_without_changing_default_tick(self):
+        engine = make_engine()
+        fall = FallActionInstance(
+            engine,
+            ActionDefinition(
+                name="Fall",
+                action_type="embedded",
+                class_name="com.group_finity.mascot.action.Fall",
+                animations=[
+                    AnimationDefinition(
+                        condition=None,
+                        frames=[FrameDefinition(image="", anchor=(64, 128), velocity=(0, 0), duration=10)],
+                    )
+                ],
+            ),
+            {},
+        )
+
+        self.assertEqual(TICK_MS, 20)
+        self.assertEqual(fall.preferred_tick_ms(), FAST_TICK_MS)
+
+    def test_tick_uses_supplied_interval_for_tick_count_only_during_call(self):
+        engine = make_engine()
+        engine.config.behaviors["Idle"].next_behaviors = []
+        engine.config.actions["Idle"].params = {"Duration": "100"}
+
+        engine.tick(FAST_TICK_MS)
+
+        self.assertEqual(engine.tick_count, 0.25)
+        self.assertEqual(engine.tick_scale, 1)
 
 
 if __name__ == "__main__":

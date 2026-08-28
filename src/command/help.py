@@ -32,6 +32,12 @@ async def run_atri_help_logic(self, event: AstrMessageEvent, config: dict):
         {"command": "继续前进", "description": "推进剧情"},
         {"command": "亚托莉我错了对不起", "description": "被拉黑道歉尝试恢复好感"},
         {"command": "解除拉黑 <QQ号>", "description": "解除指定用户的拉黑状态（权限可配置）"},
+        {"command": "/日记生成 [日期]", "description": "汇总配置群聊并生成全局日记"},
+        {"command": "/日记列表 [日期/all]", "description": "查看日记概览、日期统计或全部统计"},
+        {"command": "/日记查看 [日期] [编号]", "description": "列出或查看保存的日记正文"},
+        {"command": "/日记发布 [日期] [编号]", "description": "将已保存日记发布或补发QQ空间"},
+        {"command": "/日记状态 / 日记调试", "description": "查看运行状态或检查群历史读取"},
+        {"command": "/日记帮助", "description": "显示完整日记管理指令说明"},
     ]
 
     # 2. 路径处理

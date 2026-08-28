@@ -58,6 +58,25 @@ class DiaryStorage:
         records.sort(key=lambda item: float(item[1].get("generation_time", 0)))
         return records
 
+    def list_all(self) -> list[tuple[str, dict[str, Any]]]:
+        records: list[tuple[str, dict[str, Any]]] = []
+        try:
+            names = os.listdir(self.diary_dir)
+        except OSError:
+            return records
+        for name in names:
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(self.diary_dir, name)
+            try:
+                with open(path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                records.append((path, data))
+            except (OSError, ValueError, TypeError):
+                continue
+        records.sort(key=lambda item: float(item[1].get("generation_time", 0)), reverse=True)
+        return records
+
     def get_record(self, date: str, index: int = 0) -> tuple[str, dict[str, Any]] | None:
         records = self.list_by_date(date)
         if not records:

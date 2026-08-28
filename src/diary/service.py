@@ -278,6 +278,43 @@ class DiaryService:
             f"下次执行：{next_run}"
         )
 
+    async def debug_history(self, date: str) -> tuple[bool, str]:
+        """实际拉取配置群的指定日期消息，仅返回统计，不调用大模型。"""
+        config = self._config()
+        group_ids = self._parse_group_ids(config.get("target_groups", []))
+        if not group_ids:
+            return False, "未配置目标 QQ 群"
+        if not self.bot and not await self._discover_onebot():
+            return False, "未找到可用的 OneBot 平台连接"
+        timezone = ZoneInfo(str(config.get("timezone", "Asia/Shanghai")))
+        date_start = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone)
+        start_ts = int(date_start.timestamp())
+        end_ts = min(int((date_start + timedelta(days=1)).timestamp()), int(time.time()))
+        login = await self.bot.call_action("get_login_info")
+        bot_id = str((login or {}).get("user_id", ""))
+        bot_name = str((login or {}).get("nickname", "") or "未知")
+        reader = OneBotHistoryReader(self.bot, bot_id)
+        max_per_group = max(1, int(config.get("max_messages_per_group", 1000)))
+        details: list[str] = []
+        total_user = 0
+        total_bot = 0
+        for index, group_id in enumerate(group_ids, 1):
+            logger.info("[日记调试] 拉取群进度: %s/%s, group=%s", index, len(group_ids), group_id)
+            messages = await reader.fetch_group_messages(group_id, start_ts, end_ts, max_per_group)
+            bot_count = sum(message.is_bot for message in messages)
+            user_count = len(messages) - bot_count
+            total_bot += bot_count
+            total_user += user_count
+            details.append(f"- 群 {group_id}: 用户{user_count}条, Bot{bot_count}条")
+        text = (
+            f"🔍 日记消息读取调试 ({date})\n\n"
+            f"🤖 Bot信息：\n- QQ号: {bot_id or '未知'}\n- 昵称: {bot_name}\n\n"
+            f"📊 目标群统计：\n- 配置群: {len(group_ids)}个\n"
+            f"- 用户消息: {total_user}条\n- Bot消息: {total_bot}条\n\n"
+            f"💬 群聊详情：\n" + "\n".join(details)
+        )
+        return True, text
+
     async def _personality(self, config: dict, group_id: str) -> tuple[str, str]:
         override = str(config.get("persona_prompt", "") or "").strip()
         persona_id = str(config.get("persona_id", "") or "").strip()

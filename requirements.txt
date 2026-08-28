@@ -2,3 +2,5 @@
 jieba
 Pillow
 PySide6
+httpx
+tzdata

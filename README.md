@@ -16,13 +16,12 @@
 
 **📖 沉浸式剧情体验**：内置 `story` 剧情引擎，支持加密剧情文件与分支逻辑（如：朝圣之路），带你解锁与亚托莉的专属回忆。
 
+**📝 每日群聊日记**：定时汇总多个目标 QQ 群当天的聊天记录，结合 AstrBot 人格生成一篇第一人称文字日记；支持本地保存、手动查看与自动发布 QQ 空间。
+
 **🖥️ 实验性桌宠模式**：可在运行 AstrBot 的 Windows 本机启动 ATRI 桌宠。桌宠会在桌面上待机、行走、坐下、睡觉等，支持拖拽互动、右键动作菜单、双击聊天，并会读取插件侧的好感度、金币、背包等状态生成更贴近当前羁绊的回复。
 
 **🎨 高清可视化名片**：基于 HTML 渲染引擎（Playwright/Template），一键生成精美个人名片、商店页面及打工结算图，视觉体验拉满。
 
-**🛡️ 智能贝叶斯防辱骂**：采用 **贝叶斯过滤算法** (`bayes_filter`) 与黑名单机制。严厉打击不端行为，好感度过低将触发拉黑逻辑，且“道歉恢复”次数受限。
-
-**⚡ 关键词路由**：内置自定义路由引擎，支持 **精确匹配**、**开头匹配** 或 **包含匹配**，让互动更自然。
 
 ## 📂 文件架构
 
@@ -72,6 +71,12 @@ astrbot_plugin_atrifeed/
 │   │   └── pilgrimage/       # 特定剧情线
 │   │       └── main_pilgrimage.yaml
 │   ├── desktop_pet/          # 桌宠服务端：状态快照、本地 API、客户端进程管理
+│   ├── diary/                # 每日日记：群历史、提示词、存储、调度与QQ空间发布
+│   │   ├── message_reader.py # OneBot 群历史分页读取与消息文本化
+│   │   ├── prompt_builder.py # 日记时间线和可编辑提示词模板
+│   │   ├── qzone.py          # 复用当前 OneBot 连接发布QQ空间
+│   │   ├── service.py        # 多群合并、人格读取、模型生成及任务调度
+│   │   └── storage.py        # 日记JSON记录和防重复状态
 │   └── utils/                # 工具类
 │       ├── __init__.py
 │       ├── utils.py          # 通用工具 (图片处理、消息构建等)
@@ -158,6 +163,50 @@ astrbot_plugin_atrifeed/
 
 > 注意：桌宠模式目前仅建议在有桌面环境的 Windows 本机使用。若 AstrBot 运行在服务器、Docker 或无 GUI 环境中，桌宠窗口可能无法显示。
 
+### 6. 每日日记与 QQ 空间
+
+日记功能只读取配置中的目标 QQ 群，不读取私聊。多个群的当天记录会按时间合并为一篇全局日记，提示词中不会加入群号或群名。目前仅生成纯文字，不包含日记生图。
+
+| 指令 | 默认权限 | 说明 |
+| --- | --- | --- |
+| `/日记生成 [YYYY-MM-DD]` | AstrBot 管理员 | 手动生成指定日期的日记，日期留空时生成今天；同一天可手动生成多篇 |
+| `/日记列表 [YYYY-MM-DD]` | AstrBot 管理员 | 列出指定日期保存的全部日记及发布状态 |
+| `/日记查看 [YYYY-MM-DD] [编号]` | AstrBot 管理员 | 查看指定日记正文；编号留空时查看当天最新一篇 |
+| `/日记发布 [YYYY-MM-DD] [编号]` | AstrBot 管理员 | 将已保存的日记手动发布或补发到 QQ 空间 |
+| `/日记状态` | AstrBot 管理员 | 查看功能开关、目标群数量、执行时间和下次运行时间 |
+
+日记指令是 AstrBot 原生指令，不经过 `keyword_trigger` 和 `self._keyword_handlers`，因此不会绕过权限检查。`diary.command_permission` 支持以下三级权限：
+
+1. 仅 Bot 管理员（默认）。
+2. 群主和 Bot 管理员。
+3. 群主、群管理员和 Bot 管理员。
+
+群主和群管理员权限只在 QQ 群内生效；私聊执行日记指令时始终仅允许 AstrBot 管理员。
+
+手动生成时，插件会先在当前会话发送“正在生成”的进度消息，完成后将日记正文回复到执行指令的群或私聊。若开启 `publish_qzone`，同一篇日记还会发布到当前机器人账号的 QQ 空间；即使空间发布失败，生成的正文仍会正常回复并保存。
+
+#### 日记生成流程
+
+```text
+定时任务或管理员指令
+  → 通过 AstrBot 当前 OneBot 连接分页拉取目标群历史
+  → 按时间合并多个群的有效文字消息
+  → 读取所选 AstrBot 人格或用户填写的人格提示词覆盖
+  → 使用所选 AstrBot Provider 生成日记
+  → 保存日记 JSON
+  → 按 publish_qzone 开关决定是否发布 QQ 空间
+```
+
+日记记录保存在 AstrBot 插件数据目录下：
+
+```text
+data/plugin_data/astrbot_plugin_atrifeed/diary/
+├── diaries/   # 每篇日记的 JSON 文件
+└── state.json # 最近生成状态，用于防止定时任务重复发布
+```
+
+QQ 空间发布复用 AstrBot 已连接的 OneBot/NapCat 客户端获取登录账号和 Cookie，无需另外填写 NapCat 地址、端口、Token 或机器人 QQ 号。由于 QQ 空间发布使用 QQ 网页接口，接口变化、账号风控或 Cookie 权限异常都可能导致发布失败。
+
 ## 💡 关键词模式
 
 若在配置中开启 `keyword_trigger_enabled`，则上述 emoji 和部分关键词可**直接发送**（不带类似于 `/` 的前缀）触发。
@@ -185,11 +234,58 @@ astrbot_plugin_atrifeed/
 | `welcome_enabled` | bool | `false` | 是否启用入群欢迎功能 |
 | `desktop_pet_enabled` | bool | `false` | 是否启用实验性桌宠模式。开启后会在运行 AstrBot 的 Windows 本机启动 ATRI 桌宠客户端 |
 
+### 日记二级配置 `diary`
+
+| 配置键 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `diary.enabled` | bool | `false` | 开启后启动每日日记定时任务 |
+| `diary.publish_qzone` | bool | `true` | 生成后是否自动发布到 QQ 空间；关闭时仍生成并保存日记 |
+| `diary.command_permission` | string | `仅bot管理员` | 日记管理指令权限，可放宽至群主或群管理员 |
+| `diary.schedule_time` | string | `23:30` | 每日生成时间，格式为 `HH:MM` |
+| `diary.timezone` | string | `Asia/Shanghai` | 日记日期和定时任务使用的时区 |
+| `diary.platform_id` | string | 空 | 多个 OneBot 实例时指定用于拉取记录和发布空间的平台；单实例通常留空 |
+| `diary.target_groups` | list | `[]` | 目标 QQ 群号列表，多个群合并生成一篇日记 |
+| `diary.min_message_count` | int | `3` | 合并后允许生成日记的最少消息总数 |
+| `diary.min_messages_per_group` | int | `3` | 单个群参与合并所需的最少消息数 |
+| `diary.max_messages_per_group` | int | `1000` | 每个群单次任务最多回溯的消息数 |
+| `diary.include_bot_messages` | bool | `true` | 是否把机器人自己的回复加入日记素材 |
+| `diary.enable_emotion_analysis` | bool | `true` | 是否根据聊天关键词生成“晴、雨、多云”等心情天气 |
+| `diary.word_count` | int | `200` | 日记目标和最终最大字数，允许范围为 20–8000 |
+| `diary.provider_id` | string | 空 | 日记使用的 AstrBot 模型；留空时使用首个目标群的聊天模型 |
+| `diary.persona_id` | string | 空 | 从 AstrBot 已有人格中选择日记人格 |
+| `diary.persona_prompt` | text | 空 | 可编辑的人格提示词覆盖；非空时优先于所选人格 |
+| `diary.prompt_template` | text | 内置模板 | 可在配置页编辑的日记完整提示词模板 |
+
+`diary.prompt_template` 支持以下变量，修改模板时建议保留：
+
+| 变量 | 内容 |
+| --- | --- |
+| `${personality}` | 最终使用的人格提示词 |
+| `${date}` | 日记日期 |
+| `${time_desc}` | “到现在为止”或“这一天” |
+| `${timeline}` | 多个群合并后的聊天时间线 |
+| `${target_length}` | 目标字数 |
+| `${date_with_weather}` | 日期、星期和心情天气 |
+
+### 日记 CLI 日志与排障
+
+日记任务会在 AstrBot CLI 中记录处理进度，包括目标群进度、历史消息页码、每页数量、有效消息累计、模型与人格选择、提示词长度、大模型耗时、返回字数以及 QQ 空间发布结果。日志不会打印完整聊天正文、人格全文或完整提示词。
+
+常见问题：
+
+- **只收到“正在生成”**：请确认插件已经更新并重载。新版进度消息使用直接发送，不会被结果装饰插件提前截断生成流程。
+- **没有拉取记录**：确认平台为 OneBot/NapCat、目标群号正确，且协议端支持 `get_group_msg_history`。
+- **消息数量不足**：降低 `min_message_count` 或 `min_messages_per_group`，或提高 `max_messages_per_group`。
+- **找不到模型或人格**：在日记二级配置中重新选择 Provider/人格，或填写 `persona_prompt`。
+- **QQ 空间发布失败**：确认当前机器人 QQ 可以正常访问空间，并检查 CLI 中的 Cookie、HTTP 状态和 `tid` 日志。
+- **定时任务没有启动**：确认 `diary.enabled=true`、目标群列表非空，且 `schedule_time` 和时区格式正确。
+
 本插件依赖 AstrBot 的浏览器渲染引擎：
 
 1. **Playwright**：用于渲染 `template/` 下的 HTML 模板，请确保环境已安装。（一般自带，不用管）
 2. **资源路径**：请勿随意移动 `pic/` 文件夹，否则会导致表情包发送失败。
 3. **分词库**：更新插件会自动安装。
+4. **日记网络依赖**：`httpx` 用于发布 QQ 空间，`tzdata` 用于跨平台时区处理，更新插件时会按 `requirements.txt` 自动安装。
 
 ## ❤️ 致谢
 

@@ -6,6 +6,9 @@ from astrbot.api.message_components import Node, Plain
 UNBLOCK_PERMISSION_BOT_ADMIN = "仅bot管理员"
 UNBLOCK_PERMISSION_GROUP_OWNER = "群主和bot管理员"
 UNBLOCK_PERMISSION_GROUP_ADMIN = "群主和群管理员和bot管理员"
+DIARY_PERMISSION_BOT_ADMIN = "仅bot管理员"
+DIARY_PERMISSION_GROUP_OWNER = "群主和bot管理员"
+DIARY_PERMISSION_GROUP_ADMIN = "群主和群管理员和bot管理员"
 
 def is_group_allowed(event: AstrMessageEvent, config: dict) -> bool:
     """
@@ -116,4 +119,27 @@ async def can_use_unblock_command(event: AstrMessageEvent, config: dict) -> bool
     if mode in {UNBLOCK_PERMISSION_GROUP_ADMIN, "group_admin_owner_and_bot_admin"}:
         return role in {"owner", "admin"}
 
+    return False
+
+
+async def can_use_diary_command(event: AstrMessageEvent, config: dict) -> bool:
+    """按日记二级配置判断管理指令权限。"""
+    if event.is_admin():
+        return True
+
+    diary_config = config.get("diary", {}) if isinstance(config, dict) else {}
+    if not isinstance(diary_config, dict):
+        diary_config = {}
+    mode = diary_config.get("command_permission", DIARY_PERMISSION_BOT_ADMIN)
+    if mode in {DIARY_PERMISSION_BOT_ADMIN, "bot_admin"}:
+        return False
+
+    group_id = event.get_group_id()
+    if not group_id:
+        return False
+    role = await get_group_member_role(event, str(group_id), str(event.get_sender_id()))
+    if mode in {DIARY_PERMISSION_GROUP_OWNER, "group_owner_and_bot_admin"}:
+        return role == "owner"
+    if mode in {DIARY_PERMISSION_GROUP_ADMIN, "group_admin_owner_and_bot_admin"}:
+        return role in {"owner", "admin"}
     return False

@@ -16,7 +16,7 @@ from .src.db.database_story import AtriStoryDB
 from .src.command.feeding import *
 from .src.command.pet import *
 from .src.command.welcome import *
-from .src.utils.utils import is_group_allowed
+from .src.utils.utils import is_group_allowed, can_use_diary_command
 from .src.command.help import run_atri_help_logic
 from .src.command.abuse import run_abuse_logic
 from .src.command.my_atri import run_my_atri_logic
@@ -31,6 +31,7 @@ from .src.command.backpack import run_backpack_logic
 from .src.command.use_item import run_use_item_logic
 from .src.command.unblock import run_unblock_logic
 from .src.desktop_pet import DesktopPetService
+from .src.diary import DiaryService
 
 from .src.story.story import StoryManager
 
@@ -87,6 +88,8 @@ class AtriPlugin(Star):
             self._keyword_trigger_block_prefixes = ("/", "!", "！")
             self.desktop_pet_service = DesktopPetService(self)
             self.desktop_pet_service.start_if_enabled()
+            self.diary_service = DiaryService(self)
+            self.diary_service.start_if_enabled()
 
     def is_blocked(self, event: AstrMessageEvent) -> bool:
         """检查用户是否被全局拉黑"""
@@ -431,6 +434,98 @@ class AtriPlugin(Star):
         self.db.clear_daily_log()
         yield event.plain_result("已清理今日投喂记录。")
 
+    async def _check_diary_permission(self, event: AstrMessageEvent) -> bool:
+        conf = self.config if self.config else (self.context.get_config() or {})
+        return await can_use_diary_command(event, conf)
+
+    @filter.command("日记生成", alias={"生成日记"})
+    async def diary_generate(self, event: AstrMessageEvent, date: str = ""):
+        """手动生成一篇全局日记。"""
+        event.stop_event()
+        if not await self._check_diary_permission(event):
+            yield event.plain_result("❌ 您没有权限使用日记管理指令。")
+            return
+        target_date = date.strip() or datetime.now().strftime("%Y-%m-%d")
+        try:
+            datetime.strptime(target_date, "%Y-%m-%d")
+        except ValueError:
+            yield event.plain_result("❌ 日期格式错误，请使用 YYYY-MM-DD。")
+            return
+        logger.info(
+            "[日记] 收到手动生成指令: date=%s, sender=%s, group=%s",
+            target_date,
+            event.get_sender_id(),
+            event.get_group_id() or "private",
+        )
+        # 进度消息必须直接发送，不能先 yield。某些结果装饰插件会在处理
+        # 第一条 yield 结果后停止事件传播，导致后面的日记生成逻辑不再执行。
+        await event.send(event.plain_result(f"🔄 正在生成 {target_date} 的日记，请稍候……"))
+        logger.info("[日记] 手动生成进度消息已发送，开始执行核心生成流程")
+        success, message = await self.diary_service.generate_daily_diary(target_date, force=True)
+        prefix = "✅" if success else "❌"
+        yield event.plain_result(f"{prefix} {message}")
+
+    @filter.command("日记列表", alias={"日记记录"})
+    async def diary_list(self, event: AstrMessageEvent, date: str = ""):
+        """列出指定日期的日记记录。"""
+        event.stop_event()
+        if not await self._check_diary_permission(event):
+            yield event.plain_result("❌ 您没有权限使用日记管理指令。")
+            return
+        target_date = date.strip() or datetime.now().strftime("%Y-%m-%d")
+        records = self.diary_service.storage.list_by_date(target_date)
+        if not records:
+            yield event.plain_result(f"📭 没有找到 {target_date} 的日记。")
+            return
+        lines = [f"📚 {target_date} 的日记列表："]
+        for index, (_, record) in enumerate(records, 1):
+            generated = datetime.fromtimestamp(float(record.get("generation_time", 0)))
+            published = "已发布" if record.get("is_published_qzone", False) else "未发布"
+            lines.append(f"{index}. {generated:%H:%M:%S}｜{record.get('word_count', 0)}字｜{published}")
+        lines.append(f"共 {len(records)} 篇，可用 /日记查看 {target_date} 编号 查看正文。")
+        yield event.plain_result("\n".join(lines))
+
+    @filter.command("日记查看", alias={"查看日记"})
+    async def diary_view(self, event: AstrMessageEvent, date: str = "", index: int = 0):
+        """查看指定日期的一篇日记；不写编号时查看最新一篇。"""
+        event.stop_event()
+        if not await self._check_diary_permission(event):
+            yield event.plain_result("❌ 您没有权限使用日记管理指令。")
+            return
+        target_date = date.strip() or datetime.now().strftime("%Y-%m-%d")
+        item = self.diary_service.storage.get_record(target_date, index)
+        if not item:
+            yield event.plain_result("📭 没有找到指定日记，请先使用 /日记列表。")
+            return
+        _, record = item
+        published = "已发布QQ空间" if record.get("is_published_qzone", False) else "未发布QQ空间"
+        yield event.plain_result(
+            f"📖 {target_date}｜{record.get('word_count', 0)}字｜{published}\n\n"
+            f"{record.get('diary_content', '')}"
+        )
+
+    @filter.command("日记发布", alias={"发布日记"})
+    async def diary_publish(self, event: AstrMessageEvent, date: str = "", index: int = 0):
+        """将一篇已保存日记发布到QQ空间。"""
+        event.stop_event()
+        if not await self._check_diary_permission(event):
+            yield event.plain_result("❌ 您没有权限使用日记管理指令。")
+            return
+        target_date = date.strip() or datetime.now().strftime("%Y-%m-%d")
+        success, message = await self.diary_service.publish_saved_diary(target_date, index)
+        yield event.plain_result(f"{'✅' if success else '❌'} {message}")
+
+    @filter.command("日记状态")
+    async def diary_status(self, event: AstrMessageEvent):
+        """查看日记配置与下次执行时间。"""
+        event.stop_event()
+        if not await self._check_diary_permission(event):
+            yield event.plain_result("❌ 您没有权限使用日记管理指令。")
+            return
+        yield event.plain_result(self.diary_service.status_text())
+
     async def terminate(self):
+        if hasattr(self, "diary_service"):
+            await self.diary_service.stop()
         if hasattr(self, "desktop_pet_service"):
             self.desktop_pet_service.stop()

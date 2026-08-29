@@ -189,6 +189,8 @@ astrbot_plugin_atrifeed/
 
 手动生成时，插件会先在当前会话发送“正在生成”的进度消息，完成后将日记正文回复到执行指令的群或私聊。若开启 `publish_qzone`，同一篇日记还会发布到当前机器人账号的 QQ 空间；即使空间发布失败，生成的正文仍会正常回复并保存。
 
+手动生成不会占用当天的定时生成次数。每次到达当前配置的执行时间都会生成新日记；同一天定时生成后，再把执行时间改到当天更晚的时刻，到点也会再次生成。
+
 #### 日记生成流程
 
 ```text
@@ -206,7 +208,7 @@ astrbot_plugin_atrifeed/
 ```text
 data/plugin_data/astrbot_plugin_atrifeed/diary/
 ├── diaries/   # 每篇日记的 JSON 文件
-└── state.json # 最近生成状态，用于防止定时任务重复发布
+└── state.json # 最近一次生成状态
 ```
 
 QQ 空间发布复用 AstrBot 已连接的 OneBot/NapCat 客户端获取登录账号和 Cookie，无需另外填写 NapCat 地址、端口、Token 或机器人 QQ 号。由于 QQ 空间发布使用 QQ 网页接口，接口变化、账号风控或 Cookie 权限异常都可能导致发布失败。

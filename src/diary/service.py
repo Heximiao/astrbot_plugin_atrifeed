@@ -70,18 +70,37 @@ class DiaryService:
         return False
 
     async def _schedule_loop(self) -> None:
+        active_schedule: tuple[str, str] | None = None
+        next_run: datetime | None = None
         while True:
             try:
                 config = self._config()
-                timezone = ZoneInfo(str(config.get("timezone", "Asia/Shanghai")))
+                timezone_name = str(config.get("timezone", "Asia/Shanghai"))
+                schedule_time = str(config.get("schedule_time", "23:30"))
+                schedule = (timezone_name, schedule_time)
+                timezone = ZoneInfo(timezone_name)
                 now = datetime.now(timezone)
-                hour, minute = map(int, str(config.get("schedule_time", "23:30")).split(":"))
-                target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                if target <= now:
-                    target += timedelta(days=1)
-                await asyncio.sleep(max(1, (target - now).total_seconds()))
+
+                # 配置可能在插件运行期间被修改。定期重新读取，而不是一次睡到
+                # 原定时刻，确保把执行时间改到当天稍晚时也能及时生效。
+                if schedule != active_schedule or next_run is None:
+                    hour, minute = map(int, schedule_time.split(":"))
+                    next_run = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    if next_run <= now:
+                        next_run += timedelta(days=1)
+                    active_schedule = schedule
+
+                remaining = (next_run - now).total_seconds()
+                if remaining > 0:
+                    await asyncio.sleep(max(1, min(30, remaining)))
+                    continue
+
+                run_date = next_run.strftime("%Y-%m-%d")
+                next_run = None
                 if self._config().get("enabled", False):
-                    await self.generate_daily_diary(target.strftime("%Y-%m-%d"))
+                    # 定时执行不受当天已有手动或定时日记的限制。force 只控制
+                    # 防重复判断，QQ 空间发布仍由 publish_qzone 配置决定。
+                    await self.generate_daily_diary(run_date, force=True)
             except asyncio.CancelledError:
                 raise
             except Exception:

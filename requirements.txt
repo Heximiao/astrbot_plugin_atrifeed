@@ -1,6 +1,6 @@
 # 基础分词库，用于朴素贝叶斯检测
 jieba
 Pillow
-PySide6
+#PySide6
 httpx
 tzdata

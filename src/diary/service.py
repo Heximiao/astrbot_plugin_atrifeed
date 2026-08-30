@@ -100,14 +100,23 @@ class DiaryService:
                 if self._config().get("enabled", False):
                     # 定时执行不受当天已有手动或定时日记的限制。force 只控制
                     # 防重复判断，QQ 空间发布仍由 publish_qzone 配置决定。
-                    await self.generate_daily_diary(run_date, force=True)
+                    await self.generate_daily_diary(
+                        run_date,
+                        force=True,
+                        send_to_target_groups=True,
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.exception("[日记] 定时循环异常，60 秒后重试")
                 await asyncio.sleep(60)
 
-    async def generate_daily_diary(self, date: str, force: bool = False) -> tuple[bool, str]:
+    async def generate_daily_diary(
+        self,
+        date: str,
+        force: bool = False,
+        send_to_target_groups: bool = False,
+    ) -> tuple[bool, str]:
         async with self.run_lock:
             started_at = time.monotonic()
             logger.info("[日记] 开始生成: date=%s, manual_force=%s", date, force)
@@ -239,16 +248,56 @@ class DiaryService:
                 "error_message": publish_error,
             }
             self.storage.save(record)
+            sent_groups: list[str] = []
+            failed_groups: list[str] = []
+            if send_to_target_groups:
+                sent_groups, failed_groups = await self._send_diary_to_groups(
+                    content,
+                    group_ids,
+                )
             logger.info(
-                "[日记] 任务完成: date=%s, elapsed=%.2fs, published=%s, messages=%s",
+                "[日记] 任务完成: date=%s, elapsed=%.2fs, published=%s, messages=%s, "
+                "group_sent=%s, group_failed=%s",
                 date,
                 time.monotonic() - started_at,
                 published,
                 len(messages),
+                len(sent_groups),
+                len(failed_groups),
             )
+            group_send_warning = ""
+            if failed_groups:
+                group_send_warning = (
+                    f"\n\n⚠️ 日记已生成，但以下目标群发送失败：{', '.join(failed_groups)}"
+                )
             if config.get("publish_qzone", True) and not published:
-                return True, f"{content}\n\n⚠️ 日记已生成，但QQ空间发布失败：{publish_error}"
-            return True, content
+                return True, (
+                    f"{content}\n\n⚠️ 日记已生成，但QQ空间发布失败：{publish_error}"
+                    f"{group_send_warning}"
+                )
+            return True, f"{content}{group_send_warning}"
+
+    async def _send_diary_to_groups(
+        self,
+        content: str,
+        group_ids: list[str],
+    ) -> tuple[list[str], list[str]]:
+        """把定时生成的日记逐群发送；单群失败不影响其他群。"""
+        sent: list[str] = []
+        failed: list[str] = []
+        for group_id in group_ids:
+            try:
+                await self.bot.call_action(
+                    "send_group_msg",
+                    group_id=int(group_id),
+                    message=content,
+                )
+                sent.append(group_id)
+                logger.info("[日记] 已发送到目标群: group=%s", group_id)
+            except Exception as exc:
+                failed.append(group_id)
+                logger.warning("[日记] 发送到目标群失败: group=%s, error=%s", group_id, exc)
+        return sent, failed
 
     async def publish_saved_diary(self, date: str, index: int = 0) -> tuple[bool, str]:
         record_item = self.storage.get_record(date, index)

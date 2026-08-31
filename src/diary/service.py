@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import random
 import re
 import time
@@ -302,6 +303,16 @@ class DiaryService:
         """把定时生成的日记逐群发送；单群失败不影响其他群。"""
         sent: list[str] = []
         failed: list[str] = []
+        image_file: str | None = None
+        if image_url:
+            try:
+                image_file = self._onebot_image_file(image_url)
+            except OSError as exc:
+                logger.warning(
+                    "[日记] 读取渲染图片失败，将回退到纯文本发送: path=%s, error=%s",
+                    image_url,
+                    exc,
+                )
         for group_id in group_ids:
             try:
                 await self.bot.call_action(
@@ -310,15 +321,9 @@ class DiaryService:
                     message=(
                         [{
                             "type": "image",
-                            "data": {
-                                "file": (
-                                    image_url
-                                    if image_url.startswith(("http://", "https://"))
-                                    else Path(image_url).resolve().as_uri()
-                                )
-                            },
+                            "data": {"file": image_file},
                         }]
-                        if image_url
+                        if image_file
                         else content
                     ),
                 )
@@ -328,6 +333,16 @@ class DiaryService:
                 failed.append(group_id)
                 logger.warning("[日记] 发送到目标群失败: group=%s, error=%s", group_id, exc)
         return sent, failed
+
+    @staticmethod
+    def _onebot_image_file(image_url: str) -> str:
+        """生成 OneBot image.file；本地文件使用 Base64，避免跨容器路径失效。"""
+        if image_url.startswith(("http://", "https://", "base64://")):
+            return image_url
+        if image_url.startswith("data:image/") and ";base64," in image_url:
+            return "base64://" + image_url.split(";base64,", 1)[1]
+        payload = base64.b64encode(Path(image_url).resolve().read_bytes()).decode("ascii")
+        return f"base64://{payload}"
 
     async def publish_saved_diary(self, date: str, index: int = 0) -> tuple[bool, str]:
         record_item = self.storage.get_record(date, index)

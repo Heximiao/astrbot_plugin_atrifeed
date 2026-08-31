@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --ink: #563f34;
+            --ink-soft: #8b6c5c;
+            --paper: #fffdf6;
+            --cream: #f6eddb;
+            --pink: #efc8bf;
+            --blue: #c8dfe3;
+            --green: #ceddc4;
+            --yellow: #f3dda2;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            width: 1000px;
+            padding: 36px 28px 54px;
+            color: var(--ink);
+            background-color: #f7f1e7;
+            background-image:
+                radial-gradient(rgba(124, 96, 76, .16) 1.4px, transparent 1.4px),
+                linear-gradient(135deg, rgba(255,255,255,.35), transparent 45%);
+            background-size: 22px 22px, 100% 100%;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        .journal {
+            position: relative;
+            width: 900px;
+            margin: 0 auto;
+            padding: 54px 58px 48px;
+            background: var(--paper);
+            border: 2px solid var(--ink);
+            border-radius: 18px 7px 16px 8px;
+            box-shadow:
+                9px 9px 0 var(--blue),
+                18px 18px 0 var(--pink),
+                0 28px 45px rgba(83, 61, 48, .18);
+        }
+        .journal::before {
+            content: "";
+            position: absolute;
+            inset: 14px;
+            border: 2px dashed rgba(104, 75, 58, .35);
+            border-radius: 12px 5px 12px 5px;
+            pointer-events: none;
+        }
+        .journal::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: .22;
+            background-image: url("data:image/svg+xml,%3Csvg width='90' height='90' viewBox='0 0 90 90' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.07'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        .binding {
+            position: absolute;
+            left: 28px;
+            top: 62px;
+            bottom: 62px;
+            width: 13px;
+            border-left: 2px solid rgba(104, 75, 58, .45);
+            background: repeating-linear-gradient(to bottom, #a99486 0 3px, transparent 3px 18px);
+        }
+        .header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 32px;
+            margin-bottom: 42px;
+        }
+        .title-card {
+            position: relative;
+            padding: 18px 46px 16px;
+            background: #fffdf5;
+            border: 3px dashed var(--ink);
+            border-radius: 12px;
+            box-shadow: 5px 5px 0 var(--yellow);
+            transform: rotate(-1.4deg);
+        }
+        .title-card::before {
+            content: "";
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            width: 112px;
+            height: 27px;
+            transform: translateX(-50%) rotate(2deg);
+            background: rgba(196, 222, 226, .78);
+            clip-path: polygon(2% 8%, 98% 0, 100% 90%, 4% 100%);
+        }
+        h1 {
+            margin: 0;
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 43px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            color: #a75c45;
+            text-shadow: 1px 1px 0 #fff, 2px 2px 0 rgba(86, 63, 52, .20);
+        }
+        .subtitle {
+            margin-top: 4px;
+            color: var(--ink-soft);
+            font-family: Georgia, serif;
+            font-size: 13px;
+            letter-spacing: 5px;
+            text-align: center;
+        }
+        .date-card {
+            position: relative;
+            min-width: 278px;
+            padding: 17px 22px;
+            background: #fff8dd;
+            border: 2px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--green);
+            transform: rotate(2deg);
+        }
+        .date-card::after {
+            content: "✿";
+            position: absolute;
+            right: 12px;
+            bottom: 5px;
+            color: rgba(178, 104, 81, .38);
+            font-size: 34px;
+        }
+        .date-main {
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .date-meta {
+            margin-top: 7px;
+            color: var(--ink-soft);
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+        .stamps {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin: 0 8px 28px;
+        }
+        .stamp {
+            position: relative;
+            min-width: 140px;
+            padding: 12px 18px;
+            border: 2px solid var(--ink);
+            background: white;
+            text-align: center;
+            box-shadow: 3px 3px 0 rgba(86, 63, 52, .10);
+            flex: 1;
+        }
+        .stamp-weather { background: #f8e4df; transform: rotate(-1.5deg); }
+        .stamp-count { background: #e4f0f2; transform: rotate(1.2deg); }
+        .stamp-label { color: var(--ink-soft); font-size: 12px; letter-spacing: 2px; }
+        .stamp-value {
+            margin-top: 3px;
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 21px;
+            font-weight: 700;
+        }
+        .entry-paper {
+            position: relative;
+            z-index: 2;
+            min-height: 270px;
+            padding: 50px 56px 62px 76px;
+            border: 2px solid var(--ink);
+            border-radius: 5px 18px 10px 18px;
+            background-color: #fffef8;
+            background-image:
+                linear-gradient(90deg, transparent 0 51px, rgba(222, 133, 133, .35) 52px 53px, transparent 54px),
+                repeating-linear-gradient(to bottom, transparent 0 42px, rgba(118, 158, 173, .27) 43px 44px);
+            box-shadow: 6px 7px 0 rgba(206, 221, 196, .75), 0 15px 25px rgba(78, 55, 42, .10);
+            transform: rotate(-.25deg);
+        }
+        .mood-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 340px;
+            padding: 10px 14px;
+            background: #fff;
+            border: 2px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--blue), 0 10px 18px rgba(78, 55, 42, .12);
+            transform: rotate(1.2deg);
+        }
+        .mood-card.mood-bad {
+            box-shadow: 5px 5px 0 var(--pink), 0 10px 18px rgba(78, 55, 42, .12);
+            transform: rotate(-1.2deg);
+        }
+        .mood-card::before {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            top: -13px;
+            left: 47px;
+            width: 70px;
+            height: 23px;
+            transform: rotate(-3deg);
+            background: rgba(243, 221, 162, .82);
+            clip-path: polygon(3% 6%, 98% 0, 100% 92%, 0 100%);
+        }
+        .mood-photo {
+            display: block;
+            flex: 0 0 auto;
+            width: 112px;
+            height: 92px;
+            object-fit: cover;
+            border: 1px solid rgba(86, 63, 52, .22);
+        }
+        .mood-caption {
+            margin-top: 0;
+            color: var(--ink);
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 18px;
+            letter-spacing: 1px;
+            text-align: left;
+        }
+        .mood-date {
+            margin-top: 5px;
+            color: var(--ink-soft);
+            font-family: Georgia, serif;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-align: left;
+        }
+        .entry-paper::before {
+            content: "";
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            width: 105px;
+            height: 29px;
+            transform: translateX(-50%) rotate(-1deg);
+            background: rgba(239, 200, 191, .82);
+            clip-path: polygon(3% 7%, 99% 0, 96% 94%, 0 100%);
+        }
+        .holes {
+            position: absolute;
+            left: 17px;
+            top: 40px;
+            bottom: 40px;
+            width: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+        .hole {
+            width: 13px;
+            height: 13px;
+            border: 1px solid rgba(86, 63, 52, .38);
+            border-radius: 50%;
+            background: #f7f1e7;
+            box-shadow: inset 1px 1px 2px rgba(70, 48, 35, .18);
+        }
+        .entry {
+            margin: 0;
+            color: #49362d;
+            font-family: "STKaiti", "KaiTi", "FangSong", serif;
+            font-size: {{ font_size | e }}px;
+            line-height: 1.72;
+            letter-spacing: .075em;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            text-align: justify;
+            text-justify: inter-ideograph;
+        }
+        .signature {
+            position: absolute;
+            right: 38px;
+            bottom: 20px;
+            color: rgba(140, 87, 66, .75);
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 20px;
+            font-style: italic;
+            letter-spacing: 3px;
+            transform: rotate(-4deg);
+        }
+        .footer {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 34px;
+            padding: 0 18px;
+            color: var(--ink-soft);
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 16px;
+            letter-spacing: 3px;
+        }
+        .pressed-flower {
+            position: absolute;
+            right: 30px;
+            top: 234px;
+            z-index: 3;
+            color: rgba(124, 148, 104, .46);
+            font-family: serif;
+            font-size: 48px;
+            line-height: .72;
+            transform: rotate(14deg);
+        }
+        .corner-note {
+            position: absolute;
+            left: -22px;
+            bottom: 80px;
+            z-index: 3;
+            padding: 8px 15px;
+            background: var(--yellow);
+            color: #795d4d;
+            font-family: "STKaiti", "KaiTi", serif;
+            font-size: 16px;
+            transform: rotate(-7deg);
+            box-shadow: 2px 3px 4px rgba(70, 48, 35, .12);
+        }
+    </style>
+</head>
+<body>
+    <main class="journal">
+        <div class="binding"></div>
+        <div class="pressed-flower">❀<br>╱</div>
+        <div class="corner-note">今日份心情 ✓</div>
+
+        <header class="header">
+            <div class="title-card">
+                <h1>今日手记</h1>
+                <div class="subtitle">ATRI'S PRIVATE DIARY</div>
+            </div>
+            <div class="date-card">
+                <div class="date-main">{{ display_date | e }}</div>
+                <div class="date-meta">{{ weekday | e }} · 把今天好好收藏</div>
+            </div>
+        </header>
+
+        <section class="stamps">
+            <div class="stamp stamp-weather">
+                <div class="stamp-label">今日天气</div>
+                <div class="stamp-value">{{ weather_icon | e }} {{ weather | e }}</div>
+            </div>
+            <div class="stamp stamp-count">
+                <div class="stamp-label">写下</div>
+                <div class="stamp-value">{{ word_count | e }} 字</div>
+            </div>
+            {% if mood_image_uri %}
+            <aside class="mood-card {{ mood_class | e }}">
+                <img class="mood-photo" src="{{ mood_image_uri | e }}" alt="今日心情">
+                <div class="mood-copy">
+                    <div class="mood-caption">{{ mood_caption | e }}</div>
+                    <div class="mood-date">MEMORY · {{ weekday | e }}</div>
+                </div>
+            </aside>
+            {% endif %}
+        </section>
+
+        <article class="entry-paper">
+            <div class="holes">
+                <i class="hole"></i><i class="hole"></i><i class="hole"></i>
+                <i class="hole"></i><i class="hole"></i><i class="hole"></i>
+            </div>
+            <p class="entry">{{ content | e }}</p>
+            <div class="signature">— ATRI</div>
+        </article>
+
+        <footer class="footer">
+            <span>愿普通的一天，也有值得记住的光。</span>
+            <span>NO. {{ word_count | e }}</span>
+        </footer>
+    </main>
+</body>
+</html>

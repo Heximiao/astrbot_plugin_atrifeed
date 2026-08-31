@@ -78,6 +78,12 @@
                 "hint": "关闭后仍会生成并保存文字日记，但不会发布说说。",
                 "default": true
             },
+            "render_image": {
+                "type": "bool",
+                "description": "将日记渲染为图片",
+                "hint": "开启后，符合字数上限的日记使用手账图片发送；关闭后始终发送普通纯文本。",
+                "default": true
+            },
             "command_permission": {
                 "type": "string",
                 "description": "日记管理指令权限",
@@ -90,6 +96,17 @@
                 "description": "每日生成时间",
                 "hint": "使用 HH:MM 格式，例如 23:30。",
                 "default": "23:30"
+            },
+            "days_per_week": {
+                "type": "int",
+                "description": "每周生成日记天数",
+                "hint": "每周随机选择指定数量的日期生成日记；1 表示每周随机一天，7 表示每天。每周一重新选择。",
+                "default": 7,
+                "slider": {
+                    "min": 1,
+                    "max": 7,
+                    "step": 1
+                }
             },
             "timezone": {
                 "type": "string",

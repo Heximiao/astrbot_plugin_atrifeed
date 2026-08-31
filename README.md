@@ -173,7 +173,7 @@ astrbot_plugin_atrifeed/
 | `/日记列表` | AstrBot 管理员 | 显示全部日记的基础概览和最近10篇记录 |
 | `/日记列表 [YYYY-MM-DD]` | AstrBot 管理员 | 显示指定日期的日记列表、字数和发布统计 |
 | `/日记列表 all` | AstrBot 管理员 | 显示全部详细统计、本周统计及最长/最短日记 |
-| `/日记查看 [YYYY-MM-DD] [编号]` | AstrBot 管理员 | 未给编号时列出当天日记；给出编号时查看具体正文 |
+| `/日记查看 [YYYY-MM-DD] [编号]` | 用户 | 未给编号时列出当天日记；给出编号时查看具体正文 |
 | `/日记发布 [YYYY-MM-DD] [编号]` | AstrBot 管理员 | 将已保存的日记手动发布或补发到 QQ 空间 |
 | `/日记状态` | AstrBot 管理员 | 查看功能开关、目标群数量、执行时间和下次运行时间 |
 | `/日记调试 [YYYY-MM-DD]` | AstrBot 管理员 | 实际拉取目标群历史并统计用户/Bot消息，不调用大模型 |
@@ -244,6 +244,8 @@ QQ 空间发布复用 AstrBot 已连接的 OneBot/NapCat 客户端获取登录�
 | `diary.publish_qzone` | bool | `true` | 生成后是否自动发布到 QQ 空间；关闭时仍生成并保存日记 |
 | `diary.command_permission` | string | `仅bot管理员` | 日记管理指令权限，可放宽至群主或群管理员 |
 | `diary.schedule_time` | string | `23:30` | 每日生成时间，格式为 `HH:MM` |
+| `diary.days_per_week` | int | `7` | 每周随机生成日记的天数，范围 1–7；每周一重新选择，7 表示每天 |
+| `diary.render_image` | bool | `true` | 开启后将 850 字以内的日记渲染为手账图片；关闭后始终发送纯文本 |
 | `diary.timezone` | string | `Asia/Shanghai` | 日记日期和定时任务使用的时区 |
 | `diary.platform_id` | string | 空 | 多个 OneBot 实例时指定用于拉取记录和发布空间的平台；单实例通常留空 |
 | `diary.target_groups` | list | `[]` | 目标 QQ 群号列表，多个群合并生成一篇日记 |

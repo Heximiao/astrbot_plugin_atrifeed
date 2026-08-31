@@ -7,6 +7,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Any
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from astrbot.api import logger
@@ -14,6 +15,7 @@ from astrbot.api import logger
 from .message_reader import DiaryMessage, OneBotHistoryReader
 from .prompt_builder import DEFAULT_DIARY_PROMPT, build_timeline, render_prompt
 from .qzone import QzonePublisher
+from .renderer import DiaryRenderer
 from .storage import DiaryStorage
 
 
@@ -26,6 +28,8 @@ class DiaryService:
         self.run_lock = asyncio.Lock()
         self.bot: Any = None
         self.platform_id = ""
+        self.renderer = DiaryRenderer(plugin)
+        self.last_rendered_image_url: str | None = None
 
     def _config(self) -> dict:
         root = self.plugin.config or {}
@@ -70,14 +74,15 @@ class DiaryService:
         return False
 
     async def _schedule_loop(self) -> None:
-        active_schedule: tuple[str, str] | None = None
+        active_schedule: tuple[str, str, int] | None = None
         next_run: datetime | None = None
         while True:
             try:
                 config = self._config()
                 timezone_name = str(config.get("timezone", "Asia/Shanghai"))
                 schedule_time = str(config.get("schedule_time", "23:30"))
-                schedule = (timezone_name, schedule_time)
+                days_per_week = self._days_per_week(config)
+                schedule = (timezone_name, schedule_time, days_per_week)
                 timezone = ZoneInfo(timezone_name)
                 now = datetime.now(timezone)
 
@@ -97,13 +102,21 @@ class DiaryService:
 
                 run_date = next_run.strftime("%Y-%m-%d")
                 next_run = None
-                if self._config().get("enabled", False):
+                if (
+                    self._config().get("enabled", False)
+                    and now.weekday() in self._weekly_run_days(now, days_per_week)
+                ):
                     # 定时执行不受当天已有手动或定时日记的限制。force 只控制
                     # 防重复判断，QQ 空间发布仍由 publish_qzone 配置决定。
                     await self.generate_daily_diary(
                         run_date,
                         force=True,
                         send_to_target_groups=True,
+                    )
+                else:
+                    logger.info(
+                        "[日记] %s 不在本周随机生成日期内，跳过定时任务",
+                        run_date,
                     )
             except asyncio.CancelledError:
                 raise
@@ -118,6 +131,7 @@ class DiaryService:
         send_to_target_groups: bool = False,
     ) -> tuple[bool, str]:
         async with self.run_lock:
+            self.last_rendered_image_url = None
             started_at = time.monotonic()
             logger.info("[日记] 开始生成: date=%s, manual_force=%s", date, force)
             if not force and self.storage.was_generated(date):
@@ -248,12 +262,14 @@ class DiaryService:
                 "error_message": publish_error,
             }
             self.storage.save(record)
+            self.last_rendered_image_url = await self.render_diary_image(record)
             sent_groups: list[str] = []
             failed_groups: list[str] = []
             if send_to_target_groups:
                 sent_groups, failed_groups = await self._send_diary_to_groups(
                     content,
                     group_ids,
+                    self.last_rendered_image_url,
                 )
             logger.info(
                 "[日记] 任务完成: date=%s, elapsed=%.2fs, published=%s, messages=%s, "
@@ -281,6 +297,7 @@ class DiaryService:
         self,
         content: str,
         group_ids: list[str],
+        image_url: str | None = None,
     ) -> tuple[list[str], list[str]]:
         """把定时生成的日记逐群发送；单群失败不影响其他群。"""
         sent: list[str] = []
@@ -290,7 +307,20 @@ class DiaryService:
                 await self.bot.call_action(
                     "send_group_msg",
                     group_id=int(group_id),
-                    message=content,
+                    message=(
+                        [{
+                            "type": "image",
+                            "data": {
+                                "file": (
+                                    image_url
+                                    if image_url.startswith(("http://", "https://"))
+                                    else Path(image_url).resolve().as_uri()
+                                )
+                            },
+                        }]
+                        if image_url
+                        else content
+                    ),
                 )
                 sent.append(group_id)
                 logger.info("[日记] 已发送到目标群: group=%s", group_id)
@@ -318,33 +348,83 @@ class DiaryService:
         self.storage.update_record(path, record)
         return (True, f"QQ空间发布成功，tid={tid}") if success else (False, error)
 
+    async def render_diary_image(self, record: dict[str, Any]) -> str | None:
+        """Render a diary only when image output is enabled in current config."""
+        if not bool(self._config().get("render_image", True)):
+            logger.info("[日记] 图片渲染已关闭，使用纯文本发送")
+            return None
+        return await self.renderer.render(record)
+
     def status_text(self) -> str:
         config = self._config()
         enabled = bool(config.get("enabled", False))
         groups = self._parse_group_ids(config.get("target_groups", []))
         publish = bool(config.get("publish_qzone", True))
+        render_image = bool(config.get("render_image", True))
         schedule = str(config.get("schedule_time", "23:30"))
+        days_per_week = self._days_per_week(config)
         timezone_name = str(config.get("timezone", "Asia/Shanghai"))
         next_run = "未启用"
+        selected_days = "未启用"
         if enabled:
             try:
                 timezone = ZoneInfo(timezone_name)
                 now = datetime.now(timezone)
-                hour, minute = map(int, schedule.split(":"))
-                target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                if target <= now:
-                    target += timedelta(days=1)
+                weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+                selected = self._weekly_run_days(now, days_per_week)
+                selected_days = "、".join(weekdays[index] for index in sorted(selected))
+                target = self._next_scheduled_run(now, schedule, days_per_week)
                 next_run = target.strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
                 next_run = "时间配置无效"
+                selected_days = "配置无效"
         return (
             "📖 日记状态\n"
             f"功能开关：{'开启' if enabled else '关闭'}\n"
             f"QQ空间：{'生成后发布' if publish else '仅保存本地'}\n"
+            f"发送样式：{'手账图片' if render_image else '纯文本'}\n"
             f"目标群：{len(groups)} 个\n"
+            f"每周频率：{days_per_week} 天（{selected_days}）\n"
             f"执行时间：{schedule} ({timezone_name})\n"
             f"下次执行：{next_run}"
         )
+
+    @staticmethod
+    def _days_per_week(config: dict) -> int:
+        try:
+            return min(7, max(1, int(config.get("days_per_week", 7))))
+        except (TypeError, ValueError):
+            return 7
+
+    def _weekly_run_days(self, value: datetime, days_per_week: int) -> set[int]:
+        """Return stable pseudo-random weekdays for the week containing value."""
+        count = min(7, max(1, int(days_per_week)))
+        if count == 7:
+            return set(range(7))
+        week_start = value.date() - timedelta(days=value.weekday())
+        plugin_name = str(getattr(self.plugin, "name", "astrbot_plugin_atrifeed"))
+        picker = random.Random(f"{plugin_name}:{week_start.isoformat()}:{count}")
+        return set(picker.sample(range(7), count))
+
+    def _next_scheduled_run(
+        self,
+        now: datetime,
+        schedule_time: str,
+        days_per_week: int,
+    ) -> datetime:
+        hour, minute = map(int, schedule_time.split(":"))
+        for offset in range(14):
+            candidate = (now + timedelta(days=offset)).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+            if candidate <= now:
+                continue
+            if candidate.weekday() in self._weekly_run_days(candidate, days_per_week):
+                return candidate
+        raise ValueError("无法计算下一次日记生成时间")
 
     async def debug_history(self, date: str) -> tuple[bool, str]:
         """实际拉取配置群的指定日期消息，仅返回统计，不调用大模型。"""

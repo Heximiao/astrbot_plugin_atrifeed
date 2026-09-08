@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>今日の手記 · ATRI</title>
+    <style>
+        :root {
+            --sea-deep: #315f65;
+            --sea: #65aaa8;
+            --sea-pale: #cae3df;
+            --coral: #cf796a;
+            --sun: #e8c565;
+            --paper: #fffdf7;
+            --paper-warm: #f7f0e3;
+            --ink: #403933;
+            --ink-soft: #7e7167;
+            --rule: rgba(79, 143, 147, .19);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            min-width: 320px;
+            padding: 58px 24px 76px;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 18% 16%, rgba(255,255,255,.72) 0 2px, transparent 3px),
+                radial-gradient(circle at 78% 70%, rgba(255,255,255,.48) 0 1px, transparent 2px),
+                linear-gradient(145deg, #b9d8d4 0%, #e2ebe4 46%, #d6cfc0 100%);
+            background-size: 42px 42px, 31px 31px, 100% 100%;
+            font-family: "Yu Gothic", "Microsoft YaHei", sans-serif;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(120deg, transparent 0 64%, rgba(49,95,101,.08) 64.2% 64.5%, transparent 64.7%),
+                linear-gradient(25deg, transparent 0 72%, rgba(255,255,255,.28) 72.2% 72.5%, transparent 72.7%);
+        }
+
+        .journal {
+            position: relative;
+            width: min(100%, 900px);
+            margin: 0 auto;
+            padding: 56px 62px 42px 86px;
+            isolation: isolate;
+            background:
+                linear-gradient(90deg, transparent 0 35px, rgba(207,121,106,.22) 36px 37px, transparent 38px),
+                var(--paper);
+            border: 1px solid rgba(64,57,51,.32);
+            border-radius: 4px 20px 12px 5px;
+            box-shadow:
+                0 1px 0 rgba(255,255,255,.8) inset,
+                12px 14px 0 rgba(49,95,101,.15),
+                24px 27px 0 rgba(207,121,106,.10),
+                0 34px 80px rgba(42,67,66,.24);
+        }
+
+        .journal::after {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            inset: 13px;
+            border: 1px dashed rgba(64,57,51,.18);
+            border-radius: 3px 14px 9px 4px;
+            pointer-events: none;
+        }
+
+        .spine {
+            position: absolute;
+            inset: 50px auto 50px 24px;
+            width: 28px;
+            border-left: 2px solid rgba(64,57,51,.30);
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0 8px,
+                rgba(49,95,101,.42) 8px 11px,
+                transparent 11px 25px
+            );
+        }
+
+        .spine::before,
+        .spine::after {
+            content: "";
+            position: absolute;
+            left: -8px;
+            width: 12px;
+            height: 12px;
+            border: 1px solid rgba(64,57,51,.25);
+            border-radius: 50%;
+            background: #e8e4da;
+            box-shadow: inset 1px 1px 2px rgba(64,57,51,.18);
+        }
+
+        .spine::before { top: 5%; }
+        .spine::after { bottom: 5%; }
+
+        .tape {
+            position: absolute;
+            z-index: 4;
+            top: -17px;
+            left: 53%;
+            width: 128px;
+            height: 36px;
+            transform: translateX(-50%) rotate(-1.8deg);
+            opacity: .84;
+            background: rgba(171,211,208,.9);
+            clip-path: polygon(3% 9%, 98% 0, 100% 87%, 5% 100%, 0 58%);
+            box-shadow: 0 5px 8px rgba(49,95,101,.08);
+        }
+
+        .masthead {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+            gap: 36px;
+            padding: 2px 4px 30px;
+            border-bottom: 1px solid rgba(64,57,51,.22);
+        }
+
+        .eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 8px;
+            color: var(--sea-deep);
+            font: 700 12px/1.2 Georgia, serif;
+            letter-spacing: .24em;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 30px;
+            height: 2px;
+            background: var(--coral);
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--sea-deep);
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS Mincho", serif;
+            font-size: clamp(42px, 6.2vw, 67px);
+            font-weight: 600;
+            line-height: 1.06;
+            letter-spacing: .12em;
+            text-shadow: 2px 2px 0 rgba(202,227,223,.8);
+        }
+
+        .subtitle {
+            margin: 8px 0 0 42px;
+            color: var(--ink-soft);
+            font: italic 13px/1.4 Georgia, serif;
+            letter-spacing: .27em;
+        }
+
+        .date-card {
+            position: relative;
+            min-width: 246px;
+            padding: 17px 20px 15px;
+            background: rgba(247,240,227,.88);
+            border: 1px solid rgba(64,57,51,.42);
+            box-shadow: 5px 6px 0 var(--sea-pale);
+            transform: rotate(1deg);
+        }
+
+        .date-card::before {
+            content: "記録済み";
+            position: absolute;
+            right: -13px;
+            top: -18px;
+            padding: 5px 9px;
+            color: var(--coral);
+            background: var(--paper);
+            border: 2px solid currentColor;
+            border-radius: 2px;
+            font: 700 11px/1 "Yu Gothic", sans-serif;
+            letter-spacing: .16em;
+            transform: rotate(5deg);
+        }
+
+        .date-label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--ink-soft);
+            font: 700 10px/1 Georgia, serif;
+            letter-spacing: .28em;
+        }
+
+        .date-main {
+            display: block;
+            font-family: "Yu Mincho", "MS Mincho", serif;
+            font-size: 23px;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+
+        .date-sub {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 9px;
+            color: var(--ink-soft);
+            font-size: 12px;
+            letter-spacing: .12em;
+        }
+
+        .summary {
+            position: relative;
+            z-index: 3;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(120px, 1fr)) minmax(250px, 1.55fr);
+            gap: 14px;
+            align-items: stretch;
+            margin: 28px 4px 26px;
+        }
+
+        .summary-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 82px;
+            padding: 14px 17px;
+            border: 1px solid rgba(64,57,51,.28);
+            background: rgba(255,255,255,.78);
+        }
+
+        .summary-card.weather {
+            background: #f9e8df;
+            transform: rotate(-.7deg);
+        }
+
+        .summary-card.count {
+            background: #e4f0ee;
+            transform: rotate(.8deg);
+        }
+
+        .summary-label {
+            color: var(--ink-soft);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .20em;
+        }
+
+        .summary-value {
+            margin-top: 5px;
+            font-family: "Yu Mincho", "MS Mincho", serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+
+        .memory-card {
+            display: grid;
+            grid-template-columns: 78px 1fr;
+            gap: 14px;
+            align-items: center;
+            min-width: 0;
+            padding: 9px 13px;
+            background: #fff;
+            border: 1px solid rgba(64,57,51,.34);
+            box-shadow: 4px 5px 0 rgba(232,197,101,.55);
+            transform: rotate(-.45deg);
+        }
+
+        .memory-photo {
+            display: block;
+            width: 78px;
+            height: 65px;
+            object-fit: cover;
+            border: 1px solid rgba(64,57,51,.18);
+            filter: saturate(.86) contrast(.98);
+        }
+
+        .memory-kicker {
+            color: var(--coral);
+            font: 700 10px/1.2 Georgia, serif;
+            letter-spacing: .18em;
+        }
+
+        .memory-caption {
+            margin-top: 6px;
+            font-family: "Yu Mincho", "MS Mincho", serif;
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .entry-paper {
+            position: relative;
+            z-index: 2;
+            min-height: 470px;
+            overflow: hidden;
+            padding: 32px 86px 68px;
+            background:
+                linear-gradient(90deg, transparent 0 45px, rgba(207,121,106,.25) 46px 47px, transparent 48px),
+                repeating-linear-gradient(to bottom, transparent 0 42px, var(--rule) 43px 44px),
+                #fffefa;
+            border: 1px solid rgba(64,57,51,.50);
+            border-radius: 3px 15px 7px 15px;
+            box-shadow: 7px 8px 0 rgba(101,170,168,.26), 0 16px 28px rgba(64,57,51,.10);
+            transform: rotate(-.15deg);
+        }
+
+        .entry-meta {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 11px;
+            color: var(--ink-soft);
+            border-bottom: 1px dashed rgba(64,57,51,.22);
+            font: 700 10px/1.3 Georgia, serif;
+            letter-spacing: .18em;
+        }
+
+        .entry-art {
+            position: absolute;
+            z-index: 0;
+            bottom: -218px;
+            pointer-events: none;
+            user-select: none;
+            filter: saturate(.78) sepia(.08);
+        }
+
+        .entry-art img {
+            display: block;
+            height: 455px;
+            width: auto;
+        }
+
+        .entry-art-left {
+            left: -52px;
+            opacity: .12;
+            -webkit-mask-image: linear-gradient(90deg, #000 0 48%, rgba(0,0,0,.72) 68%, transparent 100%);
+            mask-image: linear-gradient(90deg, #000 0 48%, rgba(0,0,0,.72) 68%, transparent 100%);
+        }
+
+        .entry-art-right {
+            right: -44px;
+            bottom: -212px;
+            opacity: .105;
+            -webkit-mask-image: linear-gradient(270deg, #000 0 48%, rgba(0,0,0,.72) 68%, transparent 100%);
+            mask-image: linear-gradient(270deg, #000 0 48%, rgba(0,0,0,.72) 68%, transparent 100%);
+        }
+
+        .entry-art-right img { height: 420px; }
+
+        .entry-copy {
+            position: relative;
+            z-index: 2;
+            font-family: "Yu Mincho", "STKaiti", "KaiTi", serif;
+            font-size: {{ font_size | e }}px;
+            line-height: 44px;
+            letter-spacing: .065em;
+            overflow-wrap: anywhere;
+            text-align: justify;
+            text-justify: inter-ideograph;
+            text-shadow: 0 1px 0 rgba(255,255,255,.88);
+        }
+
+        .entry-copy p {
+            margin: 0 0 .72em;
+            white-space: pre-wrap;
+        }
+        .entry-copy p:last-child { margin-bottom: 0; }
+
+        .signature {
+            position: absolute;
+            z-index: 3;
+            right: 48px;
+            bottom: 27px;
+            color: var(--coral);
+            font: italic 21px/1 Georgia, serif;
+            letter-spacing: .14em;
+            transform: rotate(-4deg);
+        }
+
+        .whisper {
+            position: relative;
+            z-index: 4;
+            width: max-content;
+            max-width: 82%;
+            margin: -18px 0 0 -25px;
+            padding: 10px 20px 11px;
+            color: #5e4e35;
+            background: var(--sun);
+            border: 1px solid rgba(94,78,53,.26);
+            box-shadow: 3px 5px 0 rgba(94,78,53,.12);
+            font-family: "Yu Mincho", "Microsoft YaHei", serif;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: .09em;
+            transform: rotate(-2.4deg);
+        }
+
+        .whisper::after {
+            content: "";
+            position: absolute;
+            right: 10px;
+            bottom: -7px;
+            width: 18px;
+            height: 12px;
+            background: rgba(188,151,50,.62);
+            clip-path: polygon(0 0, 100% 0, 100% 100%);
+        }
+
+        .footer {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            margin: 30px 4px 0;
+            padding-top: 18px;
+            border-top: 1px solid rgba(64,57,51,.20);
+        }
+
+        .footer-quote {
+            margin: 0;
+            color: var(--ink-soft);
+            font-family: "Yu Mincho", "MS Mincho", serif;
+            font-size: 15px;
+            letter-spacing: .08em;
+        }
+
+        .repo-link {
+            flex: 0 0 auto;
+            color: var(--sea-deep);
+            font: 700 12px/1.4 Georgia, serif;
+            letter-spacing: .025em;
+            text-decoration-color: rgba(49,95,101,.36);
+            text-underline-offset: 4px;
+        }
+
+        .repo-link:hover,
+        .repo-link:focus-visible {
+            color: var(--coral);
+            text-decoration-color: currentColor;
+        }
+
+        @media (max-width: 760px) {
+            body { padding: 26px 12px 45px; }
+
+            .journal {
+                padding: 42px 24px 34px 50px;
+                box-shadow: 8px 10px 0 rgba(49,95,101,.15), 15px 18px 0 rgba(207,121,106,.10);
+            }
+
+            .spine { left: 16px; }
+
+            .masthead {
+                grid-template-columns: 1fr;
+                align-items: start;
+                gap: 24px;
+            }
+
+            .subtitle { margin-left: 2px; }
+            .date-card { min-width: 0; width: min(100%, 310px); }
+
+            .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .memory-card { grid-column: 1 / -1; }
+
+            .entry-paper {
+                min-height: 440px;
+                padding: 28px 38px 72px;
+            }
+
+            .entry-copy { font-size: 18px; line-height: 2; }
+            .entry-art img { height: 350px; }
+            .entry-art-right img { height: 325px; }
+            .entry-art-left { left: -75px; opacity: .09; }
+            .entry-art-right { right: -65px; opacity: .08; }
+
+            .footer {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .repo-link { overflow-wrap: anywhere; }
+        }
+
+        @media (max-width: 430px) {
+            h1 { font-size: 38px; }
+            .summary { grid-template-columns: 1fr; }
+            .memory-card { grid-column: auto; }
+            .entry-paper { padding-inline: 27px; }
+            .entry-meta { flex-direction: column; gap: 5px; }
+            .whisper { margin-left: -10px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="journal">
+        <div class="spine" aria-hidden="true"></div>
+        <div class="tape" aria-hidden="true"></div>
+
+        <header class="masthead">
+            <div>
+                <p class="eyebrow">ATRI MEMORY ARCHIVE</p>
+                <h1>今日の手記</h1>
+                <p class="subtitle">ATRI'S MEMORY LOG</p>
+            </div>
+
+            <section class="date-card" aria-label="日期与天气">
+                <span class="date-label">DATE</span>
+                <time class="date-main" datetime="{{ date_iso | e }}">{{ display_date | e }}</time>
+                <div class="date-sub">
+                    <span>{{ weekday | e }}</span>
+                    <span>{{ weather_icon | e }} {{ weather_display | e }}</span>
+                </div>
+            </section>
+        </header>
+
+        <section class="summary" aria-label="今日日记摘要">
+            <div class="summary-card weather">
+                <span class="summary-label">今日の天気</span>
+                <strong class="summary-value">{{ weather_icon | e }} {{ weather_display | e }}</strong>
+            </div>
+            <div class="summary-card count">
+                <span class="summary-label">書き留めた</span>
+                <strong class="summary-value">{{ word_count | e }} 文字</strong>
+            </div>
+            <div class="memory-card">
+                {% if mood_image_uri %}<img
+                    class="memory-photo"
+                    src="{{ mood_image_uri | e }}"
+                    alt="{{ mood_caption | e }}"
+                >{% endif %}
+                <div>
+                    <div class="memory-kicker">TODAY'S MEMORY</div>
+                    <div class="memory-caption">{{ mood_caption | e }}</div>
+                </div>
+            </div>
+        </section>
+
+        <article class="entry-paper">
+            {% if left_entry_illustration_uri %}<div class="entry-art entry-art-left" aria-hidden="true">
+                <img src="{{ left_entry_illustration_uri | e }}" alt="">
+            </div>{% endif %}
+            {% if right_entry_illustration_uri %}<div class="entry-art entry-art-right" aria-hidden="true">
+                <img src="{{ right_entry_illustration_uri | e }}" alt="">
+            </div>{% endif %}
+
+            <div class="entry-meta">
+                <span>ATRI PERSONAL RECORD</span>
+                <span>{{ word_count | e }} CHARS</span>
+            </div>
+
+            <div class="entry-copy">
+                <p>{{ content | e }}</p>
+            </div>
+
+            <div class="signature">— ATRI</div>
+        </article>
+
+        <aside class="whisper">亚托莉的碎碎念</aside>
+
+        <footer class="footer">
+            <p class="footer-quote">地球に私も含まれますか？</p>
+            <a
+                class="repo-link"
+                href="https://github.com/Heximiao/astrbot_plugin_atrifeed"
+                target="_blank"
+                rel="noreferrer"
+            >GitHub Repo · Heximiao/astrbot_plugin_atrifeed</a>
+        </footer>
+    </main>
+</body>
+</html>

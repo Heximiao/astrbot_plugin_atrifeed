@@ -181,6 +181,31 @@
             box-shadow: 6px 7px 0 rgba(206, 221, 196, .75), 0 15px 25px rgba(78, 55, 42, .10);
             transform: rotate(-.25deg);
         }
+        .entry-illustrations {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+        .entry-illustration {
+            position: absolute;
+            bottom: -24px;
+            display: block;
+            height: 360px;
+            max-height: 96%;
+            width: auto;
+            opacity: .15;
+            object-fit: contain;
+            user-select: none;
+        }
+        .entry-illustration-left { left: -12px; }
+        .entry-illustration-right {
+            right: -8px;
+            height: 335px;
+            opacity: .14;
+        }
         .mood-card {
             position: relative;
             display: flex;
@@ -246,6 +271,7 @@
         }
         .holes {
             position: absolute;
+            z-index: 2;
             left: 17px;
             top: 40px;
             bottom: 40px;
@@ -263,6 +289,8 @@
             box-shadow: inset 1px 1px 2px rgba(70, 48, 35, .18);
         }
         .entry {
+            position: relative;
+            z-index: 2;
             margin: 0;
             color: #49362d;
             font-family: "STKaiti", "KaiTi", "FangSong", serif;
@@ -276,6 +304,7 @@
         }
         .signature {
             position: absolute;
+            z-index: 2;
             right: 38px;
             bottom: 20px;
             color: rgba(140, 87, 66, .75);
@@ -291,12 +320,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 22px;
             margin-top: 34px;
             padding: 0 18px;
             color: var(--ink-soft);
             font-family: "STKaiti", "KaiTi", serif;
             font-size: 16px;
             letter-spacing: 3px;
+        }
+        .repo-mark {
+            flex: 0 0 auto;
+            font-family: Georgia, serif;
+            font-size: 12px;
+            letter-spacing: .4px;
+            white-space: nowrap;
         }
         .pressed-flower {
             position: absolute;
@@ -328,16 +365,16 @@
     <main class="journal">
         <div class="binding"></div>
         <div class="pressed-flower">❀<br>╱</div>
-        <div class="corner-note">今日份心情 ✓</div>
+        <div class="corner-note">亚托莉的碎碎念</div>
 
         <header class="header">
             <div class="title-card">
-                <h1>今日手记</h1>
-                <div class="subtitle">ATRI'S PRIVATE DIARY</div>
+                <h1>今日の日記</h1>
+                <div class="subtitle">ATRI'S DAILY DIARY</div>
             </div>
             <div class="date-card">
                 <div class="date-main">{{ display_date | e }}</div>
-                <div class="date-meta">{{ weekday | e }} · 把今天好好收藏</div>
+                <div class="date-meta">{{ weekday_zh | e }} · 把今天好好收藏</div>
             </div>
         </header>
 
@@ -355,13 +392,21 @@
                 <img class="mood-photo" src="{{ mood_image_uri | e }}" alt="今日心情">
                 <div class="mood-copy">
                     <div class="mood-caption">{{ mood_caption | e }}</div>
-                    <div class="mood-date">MEMORY · {{ weekday | e }}</div>
+                    <div class="mood-date">MEMORY · {{ weekday_zh | e }}</div>
                 </div>
             </aside>
             {% endif %}
         </section>
 
         <article class="entry-paper">
+            <div class="entry-illustrations" aria-hidden="true">
+                {% if left_entry_illustration_uri %}
+                <img class="entry-illustration entry-illustration-left" src="{{ left_entry_illustration_uri | e }}" alt="">
+                {% endif %}
+                {% if right_entry_illustration_uri %}
+                <img class="entry-illustration entry-illustration-right" src="{{ right_entry_illustration_uri | e }}" alt="">
+                {% endif %}
+            </div>
             <div class="holes">
                 <i class="hole"></i><i class="hole"></i><i class="hole"></i>
                 <i class="hole"></i><i class="hole"></i><i class="hole"></i>
@@ -371,8 +416,8 @@
         </article>
 
         <footer class="footer">
-            <span>愿普通的一天，也有值得记住的光。</span>
-            <span>NO. {{ word_count | e }}</span>
+            <span>地球に私も含まれますか？</span>
+            <span class="repo-mark">GitHub Repo · Heximiao/astrbot_plugin_atrifeed</span>
         </footer>
     </main>
 </body>

@@ -246,6 +246,7 @@ QQ 空间发布复用 AstrBot 已连接的 OneBot/NapCat 客户端获取登录�
 | `diary.schedule_time` | string | `23:30` | 每日生成时间，格式为 `HH:MM` |
 | `diary.days_per_week` | int | `7` | 每周随机生成日记的天数，范围 1–7；每周一重新选择，7 表示每天 |
 | `diary.render_image` | bool | `true` | 开启后将 850 字以内的日记渲染为手账图片；关闭后始终发送纯文本 |
+| `diary.template_style` | string | `经典手账` | 日记图片模板，可切换为“海风手记” |
 | `diary.timezone` | string | `Asia/Shanghai` | 日记日期和定时任务使用的时区 |
 | `diary.platform_id` | string | 空 | 多个 OneBot 实例时指定用于拉取记录和发布空间的平台；单实例通常留空 |
 | `diary.target_groups` | list | `[]` | 目标 QQ 群号列表，多个群合并生成一篇日记 |
@@ -253,7 +254,7 @@ QQ 空间发布复用 AstrBot 已连接的 OneBot/NapCat 客户端获取登录�
 | `diary.min_messages_per_group` | int | `3` | 单个群参与合并所需的最少消息数 |
 | `diary.max_messages_per_group` | int | `1000` | 每个群单次任务最多回溯的消息数 |
 | `diary.include_bot_messages` | bool | `true` | 是否把机器人自己的回复加入日记素材 |
-| `diary.enable_emotion_analysis` | bool | `true` | 是否根据聊天关键词生成“晴、雨、多云”等心情天气 |
+| `diary.enable_emotion_analysis` | bool | `true` | 是否从“晴、雨、阴、多云”等日记天气中随机选择；关闭时固定为多云 |
 | `diary.word_count` | int | `200` | 日记目标和最终最大字数，允许范围为 20–8000 |
 | `diary.provider_id` | string | 空 | 日记使用的 AstrBot 模型；留空时使用首个目标群的聊天模型 |
 | `diary.persona_id` | string | 空 | 从 AstrBot 已有人格中选择日记人格 |

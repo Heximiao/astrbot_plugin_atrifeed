@@ -522,22 +522,14 @@ class DiaryService:
         return result
 
     @staticmethod
-    def _weather(messages: list[DiaryMessage], enabled: bool) -> str:
+    def _weather(_messages: list[DiaryMessage], enabled: bool) -> str:
         if not enabled:
             return "多云"
-        content = " ".join(item.text for item in messages)
-        happy = sum(word in content for word in ["哈哈", "笑", "开心", "高兴", "棒", "好", "赞", "爱", "喜欢"])
-        sad = sum(word in content for word in ["难过", "伤心", "哭", "痛苦", "失望"])
-        angry = sum(word in content for word in ["无语", "醉了", "服了", "烦", "气", "怒"])
-        if happy >= 3:
-            return "晴"
-        if happy >= 1:
-            return "多云转晴"
-        if sad >= 2:
-            return "雨"
-        if angry >= 2:
-            return "阴"
-        return random.choice(["多云", "阴", "多云转晴"])
+        return random.choices(
+            ["晴", "多云", "阴", "雨", "多云转晴"],
+            weights=[2, 1, 1, 1, 1],
+            k=1,
+        )[0]
 
     @staticmethod
     def _date_with_weather(date: str, weather: str) -> str:

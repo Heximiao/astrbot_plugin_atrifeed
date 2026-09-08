@@ -84,6 +84,13 @@
                 "hint": "开启后，符合字数上限的日记使用手账图片发送；关闭后始终发送普通纯文本。",
                 "default": true
             },
+            "template_style": {
+                "type": "string",
+                "description": "日记图片模板",
+                "hint": "海风手记对应 diary.html；经典手账对应 diary_legacy.html。修改后下一次渲染生效。",
+                "options": ["海风手记", "经典手账"],
+                "default": "经典手账"
+            },
             "command_permission": {
                 "type": "string",
                 "description": "日记管理指令权限",
@@ -149,7 +156,8 @@
             },
             "enable_emotion_analysis": {
                 "type": "bool",
-                "description": "根据聊天情绪生成心情天气",
+                "description": "随机生成日记天气",
+                "hint": "开启后从晴、雨、阴、多云等天气中随机选择；关闭时固定为多云。",
                 "default": true
             },
             "word_count": {

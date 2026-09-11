@@ -1,3 +1,6 @@
+## 2026.9.11更新
+修复可能存在的打工图片渲染路径问题 [#22](https://github.com/Heximiao/astrbot_plugin_atrifeed/issues/22)
+
 ## 2026.9.1更新
 修复日记定时任务在跨容器时的路径获取与传输问题
 

@@ -7,6 +7,7 @@ from .feeding import send_combined_msg, get_pic_path
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
 from ..utils.utils import forward_text_result
+from ..utils.image import image_file_to_data_uri
 
 async def run_gig_logic(event, db, curr_dir, html_render):
     uid = event.get_sender_id()
@@ -54,13 +55,7 @@ async def run_gig_logic(event, db, curr_dir, html_render):
     # 更新数据库
     db.update_work_result(uid, gid, earn_coin, -cost_stamina, now_ts)
     
-    lihui_path = os.path.abspath(os.path.join(curr_dir, "pic", "lihui", "gig", "atri4.png")) 
-    
-    render_data = {
-        "earn_coin": earn_coin,
-        "cost_stamina": cost_stamina,
-        "lihui_path": lihui_path
-    }
+    lihui_path = os.path.join(curr_dir, "pic", "lihui", "gig", "atri4.png")
 
     # 读取模板
     tmpl_path = os.path.join(curr_dir, "template", "gig.html")
@@ -80,6 +75,14 @@ async def run_gig_logic(event, db, curr_dir, html_render):
     #}
 
     try:
+        # html_render 可能运行在远程服务或独立容器内，无法读取插件宿主机的
+        # file:// 路径。将立绘内嵌到模板数据中，保证所有渲染策略均可访问。
+        render_data = {
+            "earn_coin": earn_coin,
+            "cost_stamina": cost_stamina,
+            "lihui_path": image_file_to_data_uri(lihui_path),
+        }
+
         # 参照 rbq 排行，预估高度
         # header(80) + quote(80) + stats(120) + food(200) + footer(50) 
         # 设为 650 比较稳妥
@@ -111,10 +114,11 @@ async def run_gig_logic(event, db, curr_dir, html_render):
         ]
         yield event.chain_result(chain)
     except Exception as e:
+        logger.error(f"[Atri] 打工图片渲染失败，已切换为文本版: {e}")
         text = "\n".join([
             "打工完成！",
             f"赚到：{earn_coin}币",
             f"消耗：{cost_stamina}体力",
-            f"图片渲染失败，已切换为文本版：{e}",
+            "图片渲染失败，已切换为文本版。",
         ])
         yield forward_text_result(event, text)
